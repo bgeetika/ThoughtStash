@@ -1,6 +1,6 @@
 /**
  * ThoughtStash — Frontend logic
- * Voice recording, Offline IndexedDB Queue, Geo-location, Agent Polling, UI rendering
+ * Voice recording, Offline IndexedDB Queue, Spatio-Temporal Map (Leaflet), Neural Graph (vis.js), Agent Polling, UI
  */
 
 // ── State ──────────────────────────────────────────────────────────
@@ -12,6 +12,12 @@ let timerInterval = null;
 let seconds = 0;
 let chatHistory = [];
 let currentGeo = { latitude: null, longitude: null, locationName: null };
+
+let leafletMap = null;
+let mapMarkers = [];
+let mapPolylines = [];
+let neuralNetwork = null;
+let graphData = { nodes: [], edges: [] };
 
 // ── DOM refs ───────────────────────────────────────────────────────
 
@@ -85,7 +91,6 @@ async function syncOfflineQueue() {
             try {
                 currentGeo = item.geo || currentGeo;
                 await uploadThought(item.blob, item.mimeType, item.timestamp);
-                // Remove synced item
                 const delTx = idb.transaction(STORE_NAME, 'readwrite');
                 delTx.objectStore(STORE_NAME).delete(item.id);
             } catch (err) {
@@ -107,9 +112,18 @@ document.querySelectorAll('.tab').forEach(tab => {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
         tab.classList.add('active');
-        document.getElementById(tab.dataset.tab).classList.add('active');
+        const targetId = tab.dataset.tab;
+        document.getElementById(targetId).classList.add('active');
 
-        if (tab.dataset.tab === 'thoughts') loadThoughts();
+        if (targetId === 'thoughts') loadThoughts();
+        if (targetId === 'mapTab') {
+            if (!leafletMap) initMap();
+            else setTimeout(() => leafletMap.invalidateSize(), 150);
+        }
+        if (targetId === 'graphTab') {
+            if (!neuralNetwork) initGraph();
+            else setTimeout(() => neuralNetwork.fit(), 150);
+        }
     });
 });
 
@@ -282,6 +296,10 @@ async function uploadThought(blob, mimeType, customTimestamp) {
         setAgentState(connectorChip, 'working', 'Connecting...');
         pollConnectorInsights(thought.id);
 
+        // Refresh Map & Graph if initialized
+        if (leafletMap) loadMapPoints();
+        if (neuralNetwork) loadNeuralGraph();
+
     } catch (err) {
         if (!navigator.onLine) {
             await saveOfflineRecording(blob, mimeType, currentGeo, localTimestamp);
@@ -386,6 +404,185 @@ function showThoughtResult(thought) {
     latestThought.style.display = 'block';
 }
 
+// ── 🗺️ Spatio-Temporal Mind Trail (Leaflet Map) ────────────────────
+
+function initMap() {
+    if (leafletMap || typeof L === 'undefined') return;
+
+    // Center on Bay Area (Mountain View / Palo Alto centroid)
+    leafletMap = L.map('thoughtMap', {
+        zoomControl: true,
+        attributionControl: false
+    }).setView([37.52, -122.22], 10);
+
+    // CartoDB Dark Matter tiles (beautiful dark theme)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        subdomains: 'abcd'
+    }).addTo(leafletMap);
+
+    loadMapPoints();
+}
+
+async function loadMapPoints() {
+    if (!leafletMap) return;
+
+    try {
+        const res = await fetch('/api/map/points');
+        const points = await res.json();
+
+        // Clear existing markers and polylines
+        mapMarkers.forEach(m => leafletMap.removeLayer(m));
+        mapPolylines.forEach(p => leafletMap.removeLayer(p));
+        mapMarkers = [];
+        mapPolylines = [];
+
+        if (!points || points.length === 0) return;
+
+        const latLngs = [];
+        points.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+        points.forEach((pt, index) => {
+            const lat = pt.latitude;
+            const lng = pt.longitude;
+            latLngs.push([lat, lng]);
+
+            const customIcon = L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div class="custom-map-marker" style="background:${pt.color}">${pt.icon || '📍'}</div>`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 16]
+            });
+
+            const dateStr = new Date(pt.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            const marker = L.marker([lat, lng], { icon: customIcon }).addTo(leafletMap);
+
+            marker.bindPopup(`
+                <div style="min-width:200px">
+                    <span style="background:${pt.color};color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">${escapeHtml(pt.category)}</span>
+                    <span style="color:#94a3b8;font-size:11px;float:right">${escapeHtml(dateStr)}</span>
+                    <h4 style="margin:8px 0 4px;font-size:14px;color:#f8fafc">${escapeHtml(pt.location_name)}</h4>
+                    <p style="margin:0 0 6px;color:#cbd5e1;font-size:12px">${escapeHtml(pt.summary)}</p>
+                    <small style="color:#a78bfa;font-style:italic">"${escapeHtml(pt.transcript.slice(0, 90))}..."</small>
+                </div>
+            `);
+
+            marker.on('click', () => {
+                showMapThoughtDetail(pt);
+            });
+
+            mapMarkers.push(marker);
+        });
+
+        // Draw animated polyline connecting the chronological walk trajectory
+        if (latLngs.length > 1) {
+            const trail = L.polyline(latLngs, {
+                color: '#7c5cfc',
+                weight: 3,
+                opacity: 0.6,
+                dashArray: '6, 10'
+            }).addTo(leafletMap);
+            mapPolylines.push(trail);
+
+            // Fit bounds to show all Bay Area points
+            leafletMap.fitBounds(trail.getBounds(), { padding: [40, 40] });
+        }
+    } catch (err) {
+        console.error("Map load error:", err);
+    }
+}
+
+function showMapThoughtDetail(pt) {
+    const drawer = document.getElementById('mapThoughtDetail');
+    document.getElementById('mapDetailCategory').textContent = `${pt.icon || '📍'} ${pt.category}`;
+    document.getElementById('mapDetailCategory').style.background = pt.color;
+    
+    const dateObj = new Date(pt.created_at);
+    const dateStr = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    document.getElementById('mapDetailDate').textContent = `📅 ${dateStr} @ ${pt.location_name}`;
+    document.getElementById('mapDetailTitle').textContent = pt.summary;
+    document.getElementById('mapDetailTranscript').textContent = `"${pt.transcript}"`;
+    drawer.style.display = 'block';
+}
+
+// ── 🕸️ Neural Thought Graph (vis-network.js) ───────────────────────
+
+async function initGraph() {
+    if (typeof vis === 'undefined') return;
+
+    const container = document.getElementById('neuralGraph');
+    loadNeuralGraph();
+
+    document.getElementById('resetGraphBtn')?.addEventListener('click', () => {
+        if (neuralNetwork) neuralNetwork.fit({ animation: { duration: 600, easingFunction: 'easeInOutQuad' } });
+    });
+}
+
+async function loadNeuralGraph() {
+    const container = document.getElementById('neuralGraph');
+    if (!container || typeof vis === 'undefined') return;
+
+    try {
+        const res = await fetch('/api/graph');
+        const data = await res.json();
+
+        const nodes = new vis.DataSet(data.nodes);
+        const edges = new vis.DataSet(data.edges);
+
+        const options = {
+            nodes: {
+                shape: 'dot',
+                borderWidth: 2,
+                shadow: true
+            },
+            edges: {
+                smooth: { type: 'continuous' }
+            },
+            physics: {
+                barnesHut: {
+                    gravitationalConstant: -3500,
+                    centralGravity: 0.25,
+                    springLength: 95,
+                    springConstant: 0.04
+                },
+                stabilization: { iterations: 120 }
+            },
+            interaction: {
+                hover: true,
+                tooltipDelay: 100,
+                zoomView: true
+            }
+        };
+
+        neuralNetwork = new vis.Network(container, { nodes, edges }, options);
+
+        neuralNetwork.on('click', (params) => {
+            if (params.nodes.length > 0) {
+                const nodeId = params.nodes[0];
+                const node = data.nodes.find(n => n.id === nodeId);
+                if (node && node.full_data) {
+                    showGraphNodeDetail(node.full_data, node.color);
+                }
+            }
+        });
+    } catch (err) {
+        console.error("Graph load error:", err);
+    }
+}
+
+function showGraphNodeDetail(data, color) {
+    const drawer = document.getElementById('graphNodeDetail');
+    document.getElementById('graphDetailCategory').textContent = (data.topics && data.topics[0]) ? `🏷️ ${data.topics[0]}` : 'Thought';
+    document.getElementById('graphDetailCategory').style.background = color || 'var(--accent)';
+    
+    const dateObj = new Date(data.created_at);
+    const dateStr = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    document.getElementById('graphDetailDate').textContent = `📅 ${dateStr} @ ${data.location_name}`;
+    document.getElementById('graphDetailTitle').textContent = data.summary;
+    document.getElementById('graphDetailTranscript').textContent = `"${data.transcript}"`;
+    drawer.style.display = 'block';
+}
+
 // ── Thoughts Timeline ──────────────────────────────────────────────
 
 async function loadThoughts(searchQuery) {
@@ -458,7 +655,7 @@ searchInput.addEventListener('keydown', (e) => {
 analyzeBtn.addEventListener('click', async () => {
     analyzeBtn.disabled = true;
     analyzeBtn.textContent = '⏳ Analyzing...';
-    patternsResult.innerHTML = '<div class="processing"><div class="spinner"></div><p>Synthesizing multi-week thought patterns with Gemini 3.7...</p></div>';
+    patternsResult.innerHTML = '<div class="processing"><div class="spinner"></div><p>Synthesizing multi-week thought patterns with Gemini 3.7 Agent Swarm...</p></div>';
 
     try {
         const res = await fetch('/api/patterns');

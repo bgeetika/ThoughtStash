@@ -301,6 +301,141 @@ async def get_patterns():
         )
 
 
+# ── Map & Neural Graph Endpoints ────────────────────────────────────
+
+
+@app.get("/api/map/points")
+async def get_map_points():
+    """Return all geo-tagged thoughts with cluster category and connections for map visualization."""
+    all_thoughts = db.get_thoughts_with_embeddings()
+    points = []
+
+    def get_category_meta(topics, transcript):
+        text = " ".join(topics).lower() + " " + transcript.lower()
+        if any(k in text for k in ["ai", "agent", "model", "memory", "vector", "slm", "edge", "architecture"]):
+            return "Technology", "#8b5cf6", "🤖"
+        elif any(k in text for k in ["meeting", "velocity", "team", "retro", "sprint", "mentor", "leadership", "offsite"]):
+            return "Work", "#3b82f6", "💼"
+        elif any(k in text for k in ["family", "mom", "dad", "niece", "anniversary", "birthday", "party", "piñata", "ananya", "manya"]):
+            return "Family", "#ec4899", "👨‍👩‍👧"
+        else:
+            return "Health & Mindfulness", "#10b981", "🌿"
+
+    for t in all_thoughts:
+        if t.get("latitude") is not None and t.get("longitude") is not None:
+            cat, color, icon = get_category_meta(t.get("topics", []), t.get("transcript", ""))
+            points.append({
+                "id": t["id"],
+                "created_at": t.get("created_at"),
+                "summary": t.get("summary"),
+                "transcript": t.get("transcript"),
+                "location_name": t.get("location_name") or "Bay Area",
+                "latitude": t["latitude"],
+                "longitude": t["longitude"],
+                "mood": t.get("mood"),
+                "category": cat,
+                "color": color,
+                "icon": icon,
+                "topics": t.get("topics", [])
+            })
+
+    return points
+
+
+@app.get("/api/graph")
+async def get_neural_graph():
+    """Return nodes and edges representing the multi-week thought graph."""
+    all_thoughts = db.get_thoughts_with_embeddings()
+    if not all_thoughts:
+        return {"nodes": [], "edges": []}
+
+    nodes = []
+    edges = []
+
+    # Theme pillar nodes
+    theme_pillars = [
+        {"id": "theme_tech", "label": "🤖 AI Agents & Architecture", "group": "theme", "color": "#8b5cf6", "size": 30, "font": {"size": 15, "color": "#ffffff", "face": "Inter"}},
+        {"id": "theme_work", "label": "💼 Engineering Leadership", "group": "theme", "color": "#3b82f6", "size": 30, "font": {"size": 15, "color": "#ffffff", "face": "Inter"}},
+        {"id": "theme_family", "label": "👨‍👩‍👧 Family & Celebrations", "group": "theme", "color": "#ec4899", "size": 30, "font": {"size": 15, "color": "#ffffff", "face": "Inter"}},
+        {"id": "theme_health", "label": "🌿 Health & Mindfulness", "group": "theme", "color": "#10b981", "size": 30, "font": {"size": 15, "color": "#ffffff", "face": "Inter"}}
+    ]
+    nodes.extend(theme_pillars)
+
+    def get_category_id(topics, transcript):
+        text = " ".join(topics).lower() + " " + transcript.lower()
+        if any(k in text for k in ["ai", "agent", "model", "memory", "vector", "slm", "edge", "architecture"]):
+            return "theme_tech", "#8b5cf6"
+        elif any(k in text for k in ["meeting", "velocity", "team", "retro", "sprint", "mentor", "leadership", "offsite"]):
+            return "theme_work", "#3b82f6"
+        elif any(k in text for k in ["family", "mom", "dad", "niece", "anniversary", "birthday", "party", "piñata", "ananya", "manya"]):
+            return "theme_family", "#ec4899"
+        else:
+            return "theme_health", "#10b981"
+
+    def cosine(a, b):
+        if not a or not b or len(a) != len(b):
+            return 0.0
+        a, b = np.array(a, dtype=float), np.array(b, dtype=float)
+        norm = np.linalg.norm(a) * np.linalg.norm(b)
+        return float(np.dot(a, b) / (norm + 1e-8)) if norm > 0 else 0.0
+
+    thought_nodes = []
+    for t in all_thoughts:
+        parent_theme, col = get_category_id(t.get("topics", []), t.get("transcript", ""))
+        label = t.get("summary", "Thought")
+        if len(label) > 28:
+            label = label[:26] + "..."
+        
+        date_str = t.get("created_at", "")[:10]
+        loc_str = t.get("location_name") or "Bay Area"
+
+        thought_nodes.append(t)
+        nodes.append({
+            "id": f"thought_{t['id']}",
+            "label": label,
+            "title": f"📅 {date_str} @ {loc_str}\n\n{t.get('summary')}\n\nMood: {t.get('mood', 'N/A')}",
+            "group": "thought",
+            "color": col,
+            "size": 16,
+            "font": {"size": 11, "color": "#e2e8f0"},
+            "full_data": {
+                "id": t["id"],
+                "summary": t.get("summary"),
+                "transcript": t.get("transcript"),
+                "location_name": loc_str,
+                "created_at": t.get("created_at"),
+                "mood": t.get("mood"),
+                "topics": t.get("topics", [])
+            }
+        })
+
+        # Edge to parent theme
+        edges.append({
+            "from": parent_theme,
+            "to": f"thought_{t['id']}",
+            "color": {"color": "rgba(255,255,255,0.18)"},
+            "dashes": True,
+            "width": 1
+        })
+
+    # Semantic cross-thought links
+    for i in range(len(thought_nodes)):
+        for j in range(i + 1, len(thought_nodes)):
+            t1, t2 = thought_nodes[i], thought_nodes[j]
+            sim = cosine(t1.get("embedding"), t2.get("embedding"))
+            if sim > 0.60:
+                edges.append({
+                    "from": f"thought_{t1['id']}",
+                    "to": f"thought_{t2['id']}",
+                    "label": f"{(sim*100):.0f}%",
+                    "color": {"color": "rgba(124,92,252,0.6)", "highlight": "#a78bfa"},
+                    "width": max(1, int(sim * 3)),
+                    "font": {"size": 9, "color": "#94a3b8", "align": "middle"}
+                })
+
+    return {"nodes": nodes, "edges": edges}
+
+
 # ── Semantic Search ─────────────────────────────────────────────────
 
 

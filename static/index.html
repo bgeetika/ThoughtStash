@@ -3,10 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ThoughtStash — Voice Thought Capture</title>
+    <title>ThoughtStash — Long-Horizon Voice Thought Agent</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS & JS for Spatio-Temporal Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- Vis-Network for Neural Knowledge Graph -->
+    <script type="text/javascript" src="https://unpkg.com/vis-network@9.1.9/dist/vis-network.min.js"></script>
 </head>
 <body>
     <!-- Header -->
@@ -15,7 +22,7 @@
             <span class="logo-icon">🧠</span>
             <h1>ThoughtStash</h1>
         </div>
-        <p class="tagline">Capture thoughts on walks. Let AI find the patterns across time & place.</p>
+        <p class="tagline">Long-Horizon Voice Agent. Capture thoughts on walks — AI discovers connections across time & space.</p>
     </header>
 
     <!-- Agent Status Bar -->
@@ -28,6 +35,8 @@
     <!-- Navigation Tabs -->
     <nav class="tabs">
         <button class="tab active" data-tab="capture">🎙️ Capture</button>
+        <button class="tab" data-tab="mapTab">🗺️ Mind Trail</button>
+        <button class="tab" data-tab="graphTab">🕸️ Mind Graph</button>
         <button class="tab" data-tab="thoughts">💭 Timeline</button>
         <button class="tab" data-tab="patterns">🔗 Patterns</button>
         <button class="tab" data-tab="chat">💬 Chat</button>
@@ -50,7 +59,7 @@
         <!-- Processing indicator -->
         <div id="processing" class="processing" style="display:none">
             <div class="spinner"></div>
-            <p>Processing your thought with AI agents...</p>
+            <p>Processing with Gemini 3.7 Agent Swarm...</p>
         </div>
 
         <!-- Latest thought result -->
@@ -86,8 +95,63 @@
 
         <!-- Connector Agent Insights (appears autonomously) -->
         <div id="connectorInsights" class="connector-panel" style="display:none">
-            <h3>🔗 Connector Agent Found Something</h3>
+            <h3>🔗 Connector Agent Found Patterns</h3>
             <div id="connectorContent" class="connector-content"></div>
+        </div>
+    </section>
+
+    <!-- 🗺️ Mind Trail (Interactive Map Tab) -->
+    <section id="mapTab" class="tab-content">
+        <div class="section-header">
+            <div>
+                <h2>🗺️ Spatio-Temporal Mind Trail</h2>
+                <p style="color:var(--text-muted); font-size:13px; margin-top:4px">Your thought trajectory across the Bay Area. Click pins to trace connected ideas.</p>
+            </div>
+            <div class="map-legend">
+                <span class="legend-pill" style="border-color:#8b5cf6">🤖 Tech</span>
+                <span class="legend-pill" style="border-color:#3b82f6">💼 Work</span>
+                <span class="legend-pill" style="border-color:#ec4899">👨‍👩‍👧 Family</span>
+                <span class="legend-pill" style="border-color:#10b981">🌿 Health</span>
+            </div>
+        </div>
+
+        <div id="mapContainer" class="map-box">
+            <div id="thoughtMap" style="width: 100%; height: 500px; border-radius: var(--radius);"></div>
+        </div>
+
+        <div id="mapThoughtDetail" class="thought-detail-drawer" style="display:none">
+            <div class="drawer-header">
+                <span id="mapDetailCategory" class="tag"></span>
+                <span id="mapDetailDate" style="color:var(--text-muted); font-size:12px"></span>
+            </div>
+            <h3 id="mapDetailTitle" style="margin: 8px 0 4px; font-size:16px;"></h3>
+            <p id="mapDetailTranscript" style="font-size:13px; color:var(--text-muted); line-height:1.5;"></p>
+        </div>
+    </section>
+
+    <!-- 🕸️ Mind Graph (Interactive Neural Graph Tab) -->
+    <section id="graphTab" class="tab-content">
+        <div class="section-header">
+            <div>
+                <h2>🕸️ Neural Thought Graph</h2>
+                <p style="color:var(--text-muted); font-size:13px; margin-top:4px">Multi-week knowledge graph: Durable Themes & Semantic Memory Links.</p>
+            </div>
+            <div class="graph-actions">
+                <button id="resetGraphBtn" class="btn-secondary">Center View</button>
+            </div>
+        </div>
+
+        <div id="graphContainer" class="graph-box">
+            <div id="neuralGraph" style="width: 100%; height: 540px; border-radius: var(--radius);"></div>
+        </div>
+
+        <div id="graphNodeDetail" class="thought-detail-drawer" style="display:none">
+            <div class="drawer-header">
+                <span id="graphDetailCategory" class="tag"></span>
+                <span id="graphDetailDate" style="color:var(--text-muted); font-size:12px"></span>
+            </div>
+            <h3 id="graphDetailTitle" style="margin: 8px 0 4px; font-size:16px;"></h3>
+            <p id="graphDetailTranscript" style="font-size:13px; color:var(--text-muted); line-height:1.5;"></p>
         </div>
     </section>
 
@@ -122,8 +186,7 @@
             <div id="chatMessages" class="chat-messages">
                 <div class="chat-msg assistant">
                     <div class="msg-content">
-                        <p>Hey! I'm ThoughtStash — I know what you've been thinking about, when, and where. 
-                        Ask me anything about your walk thoughts, or let's explore connections between your ideas. 🧠📍</p>
+                        <p>Hey! I'm ThoughtStash — your personal long-horizon AI agent. I know what you've been thinking about, when, and where across all your walks. Ask me anything, or let's explore connections between your ideas! 🧠📍</p>
                     </div>
                 </div>
             </div>
