@@ -224,11 +224,13 @@ function updateLocationBadge() {
     }
 }
 
-// ── 3. 3D Audio Visualizer (Ceramic & Earthy Matte Palette) ──────────
+// ── 3. 3D Audio Visualizer (Ceramic & Earthy Constellation) ──────────
 
 let orbScene, orbCamera, orbRenderer, orbGroup;
 let audioAnalyser, audioDataArray;
 let orbAnimationId;
+let orbNodes = [];
+let orbLinesMesh = null;
 
 function init3DAudioOrb() {
     const container = document.getElementById("threeOrbCanvas");
@@ -247,95 +249,185 @@ function init3DAudioOrb() {
     }
 
     container.innerHTML = "";
-    const width = container.clientWidth || 720;
-    const height = container.clientHeight || 420;
+    const width = container.clientWidth || container.parentElement?.clientWidth || 800;
+    const height = container.clientHeight || 290;
 
     orbScene = new THREE.Scene();
     orbCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    orbCamera.position.set(0, 0, 115);
+    orbCamera.position.set(0, 0, 165);
 
     orbRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     orbRenderer.setSize(width, height);
     orbRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(orbRenderer.domElement);
 
-    // Warm Studio Lighting (Balanced to prevent washing out colors)
-    const ambientLight = new THREE.AmbientLight(0xFBF9F5, 0.7);
+    // Warm Studio Lighting
+    const ambientLight = new THREE.AmbientLight(0xFAF8F5, 0.9);
     orbScene.add(ambientLight);
 
-    const dirLight1 = new THREE.DirectionalLight(0xEAE6DC, 0.7);
-    dirLight1.position.set(60, 60, 80);
+    const dirLight1 = new THREE.DirectionalLight(0xEAE5D8, 0.8);
+    dirLight1.position.set(80, 80, 100);
     orbScene.add(dirLight1);
 
-    const dirLight2 = new THREE.DirectionalLight(0xD8D7D0, 0.4);
-    dirLight2.position.set(-60, -60, 80);
+    const dirLight2 = new THREE.DirectionalLight(0xD8D6CE, 0.5);
+    dirLight2.position.set(-80, -60, 80);
     orbScene.add(dirLight2);
 
     orbGroup = new THREE.Group();
     orbScene.add(orbGroup);
 
-    // Central Sphere (Warm Matte Stone)
-    const coreGeo = new THREE.IcosahedronGeometry(23, 3);
-    const coreMat = new THREE.MeshStandardMaterial({
-        color: 0xF4F4F1,
-        roughness: 0.85,
-        metalness: 0.0,
+    // Subtle ambient breathing aura ring (soft glowing perimeter behind mic)
+    const auraGeo = new THREE.RingGeometry(64, 65.5, 64);
+    const auraMat = new THREE.MeshBasicMaterial({
+        color: 0x1D4E4B,
         transparent: true,
-        opacity: 0.95
+        opacity: 0.15,
+        side: THREE.DoubleSide
     });
-    const coreMesh = new THREE.Mesh(coreGeo, coreMat);
-    orbGroup.add(coreMesh);
+    const auraMesh = new THREE.Mesh(auraGeo, auraMat);
+    orbGroup.add(auraMesh);
 
-    // Subtle Earthy Node Rings (Petrol, Ochre, Terracotta, Sage)
-    const nodeColors = [0x1D4E4B, 0xB3732A, 0xB8573D, 0x4A6B56];
-    const nodeCount = 8;
-    const ringRadius = 38;
+    // Multi-tier Constellation Network (Earthy Palette: Petrol, Ochre, Terracotta, Sage, Amber)
+    const nodeColors = [0x1D4E4B, 0xB3732A, 0xB8573D, 0x4A6B56, 0xC1912B];
     const nodeMeshes = [];
+    orbNodes = [];
 
-    for (let i = 0; i < nodeCount; i++) {
-        const angle = (i / nodeCount) * Math.PI * 2;
-        const nGeo = new THREE.SphereGeometry(2.8, 24, 24);
+    // Inner tier (10 nodes, radius ~72-88) - sits just outside the 132px mic button (radius 66px)
+    const innerCount = 10;
+    for (let i = 0; i < innerCount; i++) {
+        const angle = (i / innerCount) * Math.PI * 2 + (Math.sin(i * 1.5) * 0.2);
+        const radius = 74 + (i % 3) * 6;
+        const z = (Math.sin(i * 2.1) * 16) - 5;
+        const size = 2.4 + (i % 2) * 0.8;
         const col = nodeColors[i % nodeColors.length];
-        const nMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.8, metalness: 0.0 });
+
+        const nGeo = new THREE.SphereGeometry(size, 20, 20);
+        const nMat = new THREE.MeshStandardMaterial({
+            color: col,
+            roughness: 0.8,
+            metalness: 0.0
+        });
         const nMesh = new THREE.Mesh(nGeo, nMat);
-        nMesh.position.set(
-            Math.cos(angle) * ringRadius,
-            Math.sin(angle) * (ringRadius * 0.72),
-            Math.sin(angle * 2) * 14
-        );
+        nMesh.position.set(Math.cos(angle) * radius, Math.sin(angle) * (radius * 0.72), z);
         orbGroup.add(nMesh);
         nodeMeshes.push(nMesh);
+        orbNodes.push({ mesh: nMesh, basePos: nMesh.position.clone(), speed: 0.001 + (i % 3) * 0.0005, phase: i });
     }
 
-    // Connect nodes with soft stone lines
-    const lineCoords = [];
-    for (let i = 0; i < nodeCount; i++) {
-        const p1 = nodeMeshes[i].position;
-        const p2 = nodeMeshes[(i + 1) % nodeCount].position;
-        lineCoords.push(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
-        lineCoords.push(0, 0, 0, p1.x, p1.y, p1.z);
+    // Outer tier (14 nodes, radius ~110-155) - broad decorative expanse
+    const outerCount = 14;
+    for (let j = 0; j < outerCount; j++) {
+        const angle = (j / outerCount) * Math.PI * 2 + 0.35 + (Math.cos(j * 1.7) * 0.25);
+        const radius = 118 + (j % 4) * 10;
+        const z = (Math.cos(j * 1.9) * 24) - 8;
+        const size = 2.0 + (j % 3) * 0.6;
+        const col = nodeColors[(j + 2) % nodeColors.length];
+
+        const nGeo = new THREE.SphereGeometry(size, 18, 18);
+        const nMat = new THREE.MeshStandardMaterial({
+            color: col,
+            roughness: 0.8,
+            metalness: 0.0
+        });
+        const nMesh = new THREE.Mesh(nGeo, nMat);
+        nMesh.position.set(Math.cos(angle) * radius, Math.sin(angle) * (radius * 0.68), z);
+        orbGroup.add(nMesh);
+        nodeMeshes.push(nMesh);
+        orbNodes.push({ mesh: nMesh, basePos: nMesh.position.clone(), speed: 0.0008 + (j % 3) * 0.0004, phase: j + 10 });
     }
+
+    // Build interconnected network line segments
+    const lineCoords = [];
+    const totalNodes = nodeMeshes.length;
+
+    // Connect inner ring loop
+    for (let i = 0; i < innerCount; i++) {
+        const p1 = nodeMeshes[i].position;
+        const p2 = nodeMeshes[(i + 1) % innerCount].position;
+        lineCoords.push(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
+    }
+
+    // Connect outer ring loop
+    for (let j = innerCount; j < totalNodes; j++) {
+        const nextIdx = innerCount + ((j - innerCount + 1) % outerCount);
+        const p1 = nodeMeshes[j].position;
+        const p2 = nodeMeshes[nextIdx].position;
+        lineCoords.push(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
+    }
+
+    // Connect radial spokes between inner and outer nodes
+    for (let i = 0; i < innerCount; i++) {
+        const outerTarget1 = innerCount + Math.floor((i / innerCount) * outerCount);
+        const outerTarget2 = innerCount + ((Math.floor((i / innerCount) * outerCount) + 1) % outerCount);
+        
+        const pi = nodeMeshes[i].position;
+        const po1 = nodeMeshes[outerTarget1].position;
+        lineCoords.push(pi.x, pi.y, pi.z, po1.x, po1.y, po1.z);
+
+        if (i % 2 === 0) {
+            const po2 = nodeMeshes[outerTarget2].position;
+            lineCoords.push(pi.x, pi.y, pi.z, po2.x, po2.y, po2.z);
+        }
+    }
+
     const lineGeo = new THREE.BufferGeometry();
     lineGeo.setAttribute("position", new THREE.Float32BufferAttribute(lineCoords, 3));
-    const lineMat = new THREE.LineBasicMaterial({ color: 0xD4D3CB, transparent: true, opacity: 0.6 });
-    const lines = new THREE.LineSegments(lineGeo, lineMat);
-    orbGroup.add(lines);
+    const lineMat = new THREE.LineBasicMaterial({
+        color: 0xCBC8BC,
+        transparent: true,
+        opacity: 0.65
+    });
+    orbLinesMesh = new THREE.LineSegments(lineGeo, lineMat);
+    orbGroup.add(orbLinesMesh);
 
+    // Responsive window/tab resize observer
+    if (window.ResizeObserver) {
+        const ro = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                const nw = entry.contentRect.width;
+                const nh = entry.contentRect.height;
+                if (nw > 0 && nh > 0 && orbRenderer && orbCamera) {
+                    orbCamera.aspect = nw / nh;
+                    orbCamera.updateProjectionMatrix();
+                    orbRenderer.setSize(nw, nh);
+                }
+            }
+        });
+        ro.observe(container);
+    }
+
+    let clock = 0;
     function animateOrb() {
         orbAnimationId = requestAnimationFrame(animateOrb);
+        clock += 0.015;
 
         let audioScale = 1.0;
+        let audioEnergy = 0;
         if (audioAnalyser && isRecording && audioDataArray) {
             audioAnalyser.getByteFrequencyData(audioDataArray);
             let sum = 0;
             for (let i = 0; i < audioDataArray.length; i++) sum += audioDataArray[i];
             const avg = sum / audioDataArray.length;
-            audioScale = 1.0 + (avg / 255.0) * 0.35;
+            audioEnergy = avg / 255.0;
+            audioScale = 1.0 + audioEnergy * 0.28;
         }
 
-        orbGroup.rotation.y += 0.004;
-        orbGroup.rotation.x += 0.0015;
-        coreMesh.scale.set(audioScale, audioScale, audioScale);
+        // Ambient rotation and subtle float
+        orbGroup.rotation.y += (isRecording ? 0.006 : 0.002);
+        orbGroup.rotation.x = Math.sin(clock * 0.5) * 0.06;
+        orbGroup.rotation.z = Math.cos(clock * 0.4) * 0.03;
+
+        // Aura pulse
+        const auraScale = 1.0 + Math.sin(clock * 1.5) * 0.03 + (audioEnergy * 0.15);
+        auraMesh.scale.set(auraScale, auraScale, 1);
+        auraMat.opacity = isRecording ? (0.25 + audioEnergy * 0.3) : 0.12;
+
+        // Group audio scale
+        if (isRecording) {
+            orbGroup.scale.set(audioScale, audioScale, audioScale);
+        } else {
+            orbGroup.scale.set(1.0, 1.0, 1.0);
+        }
 
         orbRenderer.render(orbScene, orbCamera);
     }
