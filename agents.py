@@ -25,28 +25,31 @@ def _get_client():
 
 client = _get_client()
 DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
-FALLBACK_MODELS = [DEFAULT_MODEL, "gemini-2.5-flash", "gemini-flash-latest"]
+FALLBACK_MODELS = [DEFAULT_MODEL, "gemini-3.5-flash", "gemini-3.7-flash"]
 EMBEDDING_MODELS = ["gemini-embedding-001", "gemini-embedding-2"]
 
 
 def _generate_with_fallback(contents, config=None):
-    """Generate content trying primary and fallback models."""
+    """Generate content trying primary and fallback models with error recovery."""
+    import time
     last_err = None
     for model_name in FALLBACK_MODELS:
-        try:
-            if config:
+        for attempt in range(2):
+            try:
+                if config:
+                    return client.models.generate_content(
+                        model=model_name,
+                        contents=contents,
+                        config=config,
+                    )
                 return client.models.generate_content(
                     model=model_name,
                     contents=contents,
-                    config=config,
                 )
-            return client.models.generate_content(
-                model=model_name,
-                contents=contents,
-            )
-        except Exception as e:
-            last_err = e
-            continue
+            except Exception as e:
+                last_err = e
+                time.sleep(0.5)
+                continue
     raise last_err or RuntimeError("Failed to generate content with any model")
 
 
