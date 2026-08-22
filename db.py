@@ -18,9 +18,14 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "data", "mindtrail.db")
 
 
 def get_db():
-    """Get a database connection."""
+    """Get a database connection with WAL mode and 30s busy timeout."""
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30.0)
+    try:
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
+    except sqlite3.OperationalError:
+        pass
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -40,21 +45,37 @@ def cosine(a, b) -> float:
 
 def normalize_timestamp(ts: str | None = None) -> str:
     """Normalize any timestamp string to standard ISO UTC format."""
-    if not ts:
+    if not ts or not str(ts).strip():
         return datetime.now(timezone.utc).isoformat()
+    ts_str = str(ts).strip()
     try:
-        # If already ends with Z or has offset, parse and convert
-        clean_ts = ts.replace("Z", "+00:00")
+        # Handle numeric epoch timestamps
+        if ts_str.replace(".", "", 1).isdigit():
+            epoch_val = float(ts_str)
+            # If in milliseconds (> 1e11), convert to seconds
+            if epoch_val > 1e11:
+                epoch_val /= 1000.0
+            return datetime.fromtimestamp(epoch_val, tz=timezone.utc).isoformat()
+
+        # Handle ISO strings with 'Z'
+        clean_ts = ts_str.replace("Z", "+00:00")
         dt = datetime.fromisoformat(clean_ts)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         return dt.isoformat()
     except Exception:
-        return ts
+        # Fallback: if starts with YYYY-MM-DD, try strptime
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%Y/%m/%d %H:%M:%S", "%Y/%m/%d"):
+            try:
+                dt = datetime.strptime(ts_str[:19], fmt).replace(tzinfo=timezone.utc)
+                return dt.isoformat()
+            except Exception:
+                pass
+        return ts_str
 
 
 def init_db():
-    """Initialize schema with durability, hierarchical memory, and chat persistence."""
+    """Initialize schema with durability, hierarchical memory, chat persistence, and performance indexes."""
     conn = get_db()
     
     # 1. Thoughts table (Raw episodic memory)
@@ -147,6 +168,20 @@ def init_db():
     for table, col, col_type in alter_cols:
         try:
             conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}")
+        except sqlite3.OperationalError:
+            pass
+
+    # Performance Indexes
+    indexes = [
+        "CREATE INDEX IF NOT EXISTS idx_thoughts_status_created ON thoughts(status, created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_thoughts_created ON thoughts(created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_messages_conv ON messages(conversation_id, id ASC)",
+        "CREATE INDEX IF NOT EXISTS idx_daily_rollups_date ON daily_rollups(date)",
+        "CREATE INDEX IF NOT EXISTS idx_themes_name ON themes(name)",
+    ]
+    for idx_sql in indexes:
+        try:
+            conn.execute(idx_sql)
         except sqlite3.OperationalError:
             pass
 

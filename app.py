@@ -46,9 +46,6 @@ def run_background_task(coro):
     return task
 
 
-# In-memory store for latest connector insights
-latest_connector_insights: dict = {}
-
 # Serve the static directory
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
@@ -267,9 +264,15 @@ Location Context: {loc_ctx}
     return {k: v for k, v in thought_data.items() if k not in ("embedding", "raw_response")}
 
 
+# In-memory store for latest connector insights and pattern cache
+latest_connector_insights: dict = {}
+_patterns_cache: dict = {"key": None, "data": None}
+
+
 async def _run_connector(new_thought: dict):
     """Connector agent: runs autonomously with dynamic retrieval across infinite horizons."""
-    global latest_connector_insights
+    global latest_connector_insights, _patterns_cache
+    _patterns_cache = {"key": None, "data": None}  # Invalidate pattern cache on new thought
     try:
         insights = await agents.connector_analyze(new_thought)
         latest_connector_insights = insights
@@ -283,6 +286,14 @@ async def _run_connector(new_thought: dict):
             print(f"   🔗 {len(insights['connections'])} connection(s) identified")
     except Exception as e:
         print(f"⚠️ Connector agent error: {e}")
+        error_payload = {
+            "status": "error",
+            "error": str(e),
+            "connections": [],
+            "proactive_insight": "",
+        }
+        if new_thought.get("id"):
+            db.update_thought_connections(new_thought["id"], json.dumps(error_payload))
 
 
 # ── Reprocess Endpoint (Durability) ──────────────────────────────────
@@ -314,13 +325,14 @@ async def reprocess_thought(thought_id: int):
         "summary": structured.get("summary", ""),
         "topics": structured.get("topics", []),
         "entities": structured.get("entities", []),
-        "mood": structured.get("mood", ""),
+        "mood": structured.get("mood", "reflective"),
         "key_insights": structured.get("key_insights", []),
         "thought_type": structured.get("thought_type", "reflection"),
         "urgency": structured.get("urgency", "low"),
         "implicit_questions": structured.get("implicit_questions", []),
         "embedding": embedding,
         "embedding_model": model_used,
+        "status": "completed",
         "raw_response": json.dumps(structured),
     })
 
@@ -380,16 +392,24 @@ async def get_latest_connections():
 
 
 @app.get("/api/patterns")
-async def get_patterns():
-    """Run hierarchical pattern analysis across thoughts."""
+async def get_patterns(force: bool = False):
+    """Run hierarchical pattern analysis across thoughts with smart caching."""
+    global _patterns_cache
     thoughts = db.get_all_thoughts(status="completed")
     if len(thoughts) < 2:
         return {
             "error": "Need at least 2 thoughts to find patterns",
             "thought_count": len(thoughts),
         }
+
+    cache_key = f"{len(thoughts)}_{thoughts[0]['id'] if thoughts else 0}"
+    if not force and _patterns_cache.get("key") == cache_key and _patterns_cache.get("data"):
+        return _patterns_cache["data"]
+
     try:
-        return await agents.connector_full_analysis(thoughts)
+        result = await agents.connector_full_analysis(thoughts)
+        _patterns_cache = {"key": cache_key, "data": result}
+        return result
     except Exception as e:
         raise HTTPException(
             500, detail=f"Connector pattern analysis failed: {e}"

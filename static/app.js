@@ -651,6 +651,14 @@ async function init3DGraph() {
 
     if (graph3DAnimationId) {
         cancelAnimationFrame(graph3DAnimationId);
+        graph3DAnimationId = null;
+    }
+    if (graph3DRenderer) {
+        try {
+            graph3DRenderer.dispose();
+            graph3DRenderer.forceContextLoss();
+        } catch (e) {}
+        graph3DRenderer = null;
     }
     container.innerHTML = '';
 
@@ -859,13 +867,6 @@ async function init3DGraph() {
         }
     };
 
-    document.getElementById('resetGraphBtn')?.addEventListener('click', () => {
-        if (graph3DGroup && graph3DCamera) {
-            graph3DGroup.rotation.set(0, 0, 0);
-            graph3DCamera.position.set(0, 0, 320);
-        }
-    });
-
     function animateGraph() {
         graph3DAnimationId = requestAnimationFrame(animateGraph);
         if (!isGraphDragging && graph3DGroup) {
@@ -875,6 +876,13 @@ async function init3DGraph() {
     }
     animateGraph();
 }
+
+document.getElementById('resetGraphBtn')?.addEventListener('click', () => {
+    if (graph3DGroup && graph3DCamera) {
+        graph3DGroup.rotation.set(0, 0, 0);
+        graph3DCamera.position.set(0, 0, 320);
+    }
+});
 
 // ── 8. Timeline (All Notes) ────────────────────────────────────────
 
@@ -1023,7 +1031,7 @@ if (newChatBtn) {
         chatMessages.innerHTML = `
             <div class="chat-bubble assistant">
                 <div class="bubble-avatar">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--petrol)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
                 </div>
                 <div class="bubble-body">
                     <div class="bubble-summary">Hi! Ask me anything about your past notes, walks, or ideas.</div>
@@ -1124,7 +1132,7 @@ function appendChatBubble(role, text) {
     div.className = `chat-bubble ${role}`;
     const iconSvg = role === 'user' ? 
         `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>` :
-        `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`;
+        `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--petrol)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`;
 
     const bodyContent = text ? `<p>${escapeHtml(text)}</p>` : '';
     div.innerHTML = `
@@ -1160,12 +1168,13 @@ function openThoughtInspector(data) {
 
 async function openThoughtInspectorById(id) {
     try {
-        const res = await fetch(`/api/thoughts`);
-        const thoughts = await res.json();
-        const found = thoughts.find(t => t.id === id);
-        if (found) openThoughtInspector(found);
+        const res = await fetch(`/api/thoughts/${id}`);
+        if (res.ok) {
+            const thought = await res.json();
+            openThoughtInspector(thought);
+        }
     } catch (e) {
-        console.error(e);
+        console.error("Failed to load thought:", e);
     }
 }
 
