@@ -302,8 +302,8 @@ function init3DAudioOrb() {
     const aura2Mesh = new THREE.Mesh(aura2Geo, aura2Mat);
     orbGroup.add(aura2Mesh);
 
-    // Earthy Matte Palette: Slate Indigo, Ochre, Terracotta, Forest Green, Warm Amber
-    const nodeColors = [0x2D5B88, 0xB3732A, 0xB8573D, 0x3F7A56, 0xC1912B];
+    // Earthy Matte Palette: Slate Indigo, Ochre, Terracotta, Forest Green, Ocean Teal, Velvet Plum, Berry Rose
+    const nodeColors = [0x2D5B88, 0xB3732A, 0xB8573D, 0x3F7A56, 0x1C7C75, 0x7B4B88, 0xA84A6E];
     const nodeMeshes = [];
     orbNodes = [];
     orbEdges = [];
@@ -963,10 +963,13 @@ async function init3DGraph() {
         if (!data || !data.nodes || data.nodes.length === 0) return;
 
         const themePillars = {
-            "theme_tech": new THREE.Vector3(-90, 48, 20),
-            "theme_work": new THREE.Vector3(90, 52, -20),
-            "theme_family": new THREE.Vector3(-80, -58, -30),
-            "theme_health": new THREE.Vector3(80, -52, 30)
+            "theme_tech": new THREE.Vector3(-90, 45, 20),
+            "theme_work": new THREE.Vector3(90, 48, -25),
+            "theme_family": new THREE.Vector3(-80, -60, -35),
+            "theme_health": new THREE.Vector3(80, -55, 30),
+            "theme_travel": new THREE.Vector3(0, 90, -45),
+            "theme_philosophy": new THREE.Vector3(-85, -10, 75),
+            "theme_habits": new THREE.Vector3(85, 0, 70)
         };
 
         data.nodes.forEach(n => {
@@ -980,6 +983,9 @@ async function init3DGraph() {
                 if (col.includes("2d5b88") || col.includes("1d4e4b")) basePos = themePillars["theme_tech"];
                 else if (col.includes("b3732a") || col.includes("c78844")) basePos = themePillars["theme_work"];
                 else if (col.includes("b8573d") || col.includes("c26d4d")) basePos = themePillars["theme_family"];
+                else if (col.includes("1c7c75")) basePos = themePillars["theme_travel"];
+                else if (col.includes("7b4b88")) basePos = themePillars["theme_philosophy"];
+                else if (col.includes("a84a6e")) basePos = themePillars["theme_habits"];
                 else basePos = themePillars["theme_health"];
 
                 const u = Math.random();

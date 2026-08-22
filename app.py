@@ -464,20 +464,28 @@ async def get_map_points():
     all_thoughts = db.get_thoughts_with_embeddings()
     points = []
 
-    def get_category_meta(topics, transcript):
-        text = " ".join(topics).lower() + " " + transcript.lower()
-        if any(k in text for k in ["ai", "agent", "model", "memory", "vector", "slm", "edge", "architecture"]):
-            return "AI & Systems", "#2D5B88", "🤖"
-        elif any(k in text for k in ["meeting", "velocity", "team", "retro", "sprint", "mentor", "leadership", "offsite"]):
-            return "Strategy & Work", "#B3732A", "💼"
-        elif any(k in text for k in ["family", "mom", "dad", "niece", "anniversary", "birthday", "party", "piñata", "ananya", "manya"]):
+    def get_category_meta(topics, transcript, loc=""):
+        text = " ".join(topics).lower() + " " + transcript.lower() + " " + (loc or "").lower()
+        if any(k in text for k in ["tahoe", "emerald bay", "big sur", "mcway falls", "carmel river", "sausalito", "angel island", "road trip", "coastal drive", "micro-adventure"]):
+            return "Travel & Exploration", "#1C7C75", "🧭"
+        elif any(k in text for k in ["family", "mom", "dad", "niece", "anniversary", "birthday", "party", "piñata", "ananya", "manya", "musical", "slideshow", "crafts", "kite"]):
             return "Family & Events", "#B8573D", "👨‍👩‍👧"
+        elif any(k in text for k in ["hydration", "water intake", "drink more water", "skincare", "diet", "nutrition", "food intake", "caffeine cutoff", "sleep latency", "sleep hygiene", "homework", "studying", "social network", "networking"]):
+            return "Habits & Routines", "#A84A6E", "✨"
+        elif any(k in text for k in ["philosophy", "solitude", "contemplation", "physical books", "digital detox", "human cognition", "computing history", "serendipity", "junior museum", "avian navigation", "lossy compression", "uninhibited thoughts"]):
+            return "Philosophy & Ideas", "#7B4B88", "📖"
+        elif any(k in text for k in ["tilden", "russian ridge", "poppies", "breathwork", "daily steps", "14,000", "endurance", "sunlight", "circadian", "almaden", "alpine trail", "woodside", "outdoor movement", "hiking"]):
+            return "Health & Nature", "#3F7A56", "🌿"
+        elif any(k in text for k in ["meeting", "velocity", "team", "retro", "sprint", "mentor", "leadership", "offsite", "interview", "okr", "deprecation", "flaky", "roadmap", "ci/cd", "developer tools", "two-pizza", "squads"]):
+            return "Strategy & Work", "#B3732A", "💼"
+        elif any(k in text for k in ["ai", "agent", "model", "vector", "slm", "quantization", "embedding", "streaming json", "acoustic", "schema", "neural", "token", "context"]):
+            return "AI & Systems", "#2D5B88", "🤖"
         else:
-            return "Health & Daily Walks", "#3F7A56", "🌿"
+            return "Health & Nature", "#3F7A56", "🌿"
 
     for t in all_thoughts:
         if t.get("latitude") is not None and t.get("longitude") is not None:
-            cat, color, icon = get_category_meta(t.get("topics", []), t.get("transcript", ""))
+            cat, color, icon = get_category_meta(t.get("topics", []), t.get("transcript", ""), t.get("location_name", ""))
             points.append({
                 "id": t["id"],
                 "created_at": t.get("created_at"),
@@ -506,29 +514,40 @@ async def get_neural_graph():
     nodes = []
     edges = []
 
-    # Theme pillar nodes
+    # Theme pillar nodes (7 Distinct Thematic Constellations)
     theme_pillars = [
-        {"id": "theme_tech", "label": "AI Agents & Systems", "group": "theme", "color": "#2D5B88", "size": 32, "font": {"size": 14, "color": "#14161A", "face": "General Sans"}},
-        {"id": "theme_work", "label": "Engineering Strategy", "group": "theme", "color": "#B3732A", "size": 32, "font": {"size": 14, "color": "#14161A", "face": "General Sans"}},
-        {"id": "theme_family", "label": "Family & Celebrations", "group": "theme", "color": "#B8573D", "size": 32, "font": {"size": 14, "color": "#14161A", "face": "General Sans"}},
-        {"id": "theme_health", "label": "Health & Mindfulness", "group": "theme", "color": "#3F7A56", "size": 32, "font": {"size": 14, "color": "#14161A", "face": "General Sans"}}
+        {"id": "theme_tech", "label": "AI & Systems", "group": "theme", "color": "#2D5B88", "size": 32, "font": {"size": 14, "color": "#14161A", "face": "General Sans"}},
+        {"id": "theme_work", "label": "Strategy & Work", "group": "theme", "color": "#B3732A", "size": 32, "font": {"size": 14, "color": "#14161A", "face": "General Sans"}},
+        {"id": "theme_family", "label": "Family & Events", "group": "theme", "color": "#B8573D", "size": 32, "font": {"size": 14, "color": "#14161A", "face": "General Sans"}},
+        {"id": "theme_health", "label": "Health & Nature", "group": "theme", "color": "#3F7A56", "size": 32, "font": {"size": 14, "color": "#14161A", "face": "General Sans"}},
+        {"id": "theme_travel", "label": "Travel & Exploration", "group": "theme", "color": "#1C7C75", "size": 32, "font": {"size": 14, "color": "#14161A", "face": "General Sans"}},
+        {"id": "theme_philosophy", "label": "Philosophy & Ideas", "group": "theme", "color": "#7B4B88", "size": 32, "font": {"size": 14, "color": "#14161A", "face": "General Sans"}},
+        {"id": "theme_habits", "label": "Habits & Routines", "group": "theme", "color": "#A84A6E", "size": 32, "font": {"size": 14, "color": "#14161A", "face": "General Sans"}}
     ]
     nodes.extend(theme_pillars)
 
-    def get_category_id(topics, transcript):
-        text = " ".join(topics).lower() + " " + transcript.lower()
-        if any(k in text for k in ["ai", "agent", "model", "memory", "vector", "slm", "edge", "architecture"]):
-            return "theme_tech", "#2D5B88"
-        elif any(k in text for k in ["meeting", "velocity", "team", "retro", "sprint", "mentor", "leadership", "offsite"]):
-            return "theme_work", "#B3732A"
-        elif any(k in text for k in ["family", "mom", "dad", "niece", "anniversary", "birthday", "party", "piñata", "ananya", "manya"]):
+    def get_category_id(topics, transcript, loc=""):
+        text = " ".join(topics).lower() + " " + transcript.lower() + " " + (loc or "").lower()
+        if any(k in text for k in ["tahoe", "emerald bay", "big sur", "mcway falls", "carmel river", "sausalito", "angel island", "road trip", "coastal drive", "micro-adventure"]):
+            return "theme_travel", "#1C7C75"
+        elif any(k in text for k in ["family", "mom", "dad", "niece", "anniversary", "birthday", "party", "piñata", "ananya", "manya", "musical", "slideshow", "crafts", "kite"]):
             return "theme_family", "#B8573D"
+        elif any(k in text for k in ["hydration", "water intake", "drink more water", "skincare", "diet", "nutrition", "food intake", "caffeine cutoff", "sleep latency", "sleep hygiene", "homework", "studying", "social network", "networking"]):
+            return "theme_habits", "#A84A6E"
+        elif any(k in text for k in ["philosophy", "solitude", "contemplation", "physical books", "digital detox", "human cognition", "computing history", "serendipity", "junior museum", "avian navigation", "lossy compression", "uninhibited thoughts"]):
+            return "theme_philosophy", "#7B4B88"
+        elif any(k in text for k in ["tilden", "russian ridge", "poppies", "breathwork", "daily steps", "14,000", "endurance", "sunlight", "circadian", "almaden", "alpine trail", "woodside", "outdoor movement", "hiking"]):
+            return "theme_health", "#3F7A56"
+        elif any(k in text for k in ["meeting", "velocity", "team", "retro", "sprint", "mentor", "leadership", "offsite", "interview", "okr", "deprecation", "flaky", "roadmap", "ci/cd", "developer tools", "two-pizza", "squads"]):
+            return "theme_work", "#B3732A"
+        elif any(k in text for k in ["ai", "agent", "model", "vector", "slm", "quantization", "embedding", "streaming json", "acoustic", "schema", "neural", "token", "context"]):
+            return "theme_tech", "#2D5B88"
         else:
             return "theme_health", "#3F7A56"
 
     thought_nodes = []
     for t in all_thoughts:
-        parent_theme, col = get_category_id(t.get("topics", []), t.get("transcript", ""))
+        parent_theme, col = get_category_id(t.get("topics", []), t.get("transcript", ""), t.get("location_name", ""))
         label = t.get("summary", "Thought")
         if len(label) > 28:
             label = label[:26] + "..."
