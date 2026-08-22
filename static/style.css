@@ -490,6 +490,16 @@ body {
     border-color: var(--petrol);
 }
 
+.loc-pulsing {
+    opacity: 0.75;
+    animation: locPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes locPulse {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1.0; }
+}
+
 /* Quick Text Box */
 .quick-text-box {
     display: flex;

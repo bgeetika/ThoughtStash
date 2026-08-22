@@ -88,8 +88,99 @@ document.querySelectorAll(".nav-btn").forEach(btn => {
 
 // ── 2. Geolocation & Reverse Geocoding ──────────────────────────────
 
+function autoDetectCurrentLocation(force = false) {
+    // If user has explicitly selected a manual location and not forcing GPS detection
+    if (!force && currentGeo.isManual && sessionStorage.getItem("thoughtstash_manual_location")) {
+        try {
+            const saved = JSON.parse(sessionStorage.getItem("thoughtstash_manual_location"));
+            if (saved && saved.locationName) {
+                currentGeo = saved;
+                updateLocationBadge();
+                return;
+            }
+        } catch (e) {}
+    }
+
+    const locationBadgeEl = document.getElementById("locationBadge");
+    const detectGpsBtnEl = document.getElementById("detectGpsBtn");
+    const locationModalEl = document.getElementById("locationModal");
+
+    updateLocationBadge(true);
+
+    if (!("geolocation" in navigator)) {
+        console.log("Geolocation is not supported by this browser.");
+        currentGeo.locationName = "Palo Alto, CA";
+        currentGeo.latitude = 37.4419;
+        currentGeo.longitude = -122.1430;
+        currentGeo.isManual = false;
+        updateLocationBadge();
+        return;
+    }
+
+    if (detectGpsBtnEl && force) {
+        detectGpsBtnEl.disabled = true;
+        const origSpan = detectGpsBtnEl.querySelector("span");
+        if (origSpan) origSpan.textContent = "Acquiring GPS...";
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            currentGeo.latitude = lat;
+            currentGeo.longitude = lon;
+            currentGeo.isManual = false;
+            sessionStorage.removeItem("thoughtstash_manual_location");
+            sessionStorage.setItem("thoughtstash_last_coords", JSON.stringify({ lat, lon }));
+
+            await resolveCoordinatesName(lat, lon);
+            console.log("Current location auto-detected:", currentGeo.locationName, lat, lon);
+
+            if (detectGpsBtnEl) {
+                detectGpsBtnEl.disabled = false;
+                const origSpan = detectGpsBtnEl.querySelector("span");
+                if (origSpan) origSpan.textContent = "Detect GPS Location";
+            }
+            if (locationModalEl && force) {
+                locationModalEl.style.display = "none";
+            }
+        },
+        (err) => {
+            console.warn("Auto-geolocation notice:", err.message);
+            if (detectGpsBtnEl) {
+                detectGpsBtnEl.disabled = false;
+                const origSpan = detectGpsBtnEl.querySelector("span");
+                if (origSpan) origSpan.textContent = "Detect GPS Location";
+            }
+
+            // Check if we previously cached coords
+            const savedCoords = sessionStorage.getItem("thoughtstash_last_coords");
+            if (savedCoords) {
+                try {
+                    const { lat, lon } = JSON.parse(savedCoords);
+                    currentGeo.latitude = lat;
+                    currentGeo.longitude = lon;
+                    resolveCoordinatesName(lat, lon);
+                    return;
+                } catch (e) {}
+            }
+
+            // Fallback gracefully without intrusive alert
+            if (!currentGeo.locationName || currentGeo.locationName.includes("Detecting")) {
+                currentGeo.locationName = "Palo Alto, CA";
+                currentGeo.latitude = 37.4419;
+                currentGeo.longitude = -122.1430;
+                currentGeo.isManual = false;
+            }
+            updateLocationBadge();
+        },
+        { enableHighAccuracy: true, timeout: 9000, maximumAge: 60000 }
+    );
+}
+
 function initGeolocation() {
-    updateLocationBadge();
+    // Auto-detect user's current location by default on home page startup
+    autoDetectCurrentLocation(false);
 
     const locationBadgeEl = document.getElementById("locationBadge");
     const locationModalEl = document.getElementById("locationModal");
@@ -118,31 +209,7 @@ function initGeolocation() {
 
     if (detectGpsBtnEl) {
         detectGpsBtnEl.addEventListener("click", () => {
-            if (!("geolocation" in navigator)) {
-                alert("Geolocation is not supported by your browser.");
-                return;
-            }
-            detectGpsBtnEl.disabled = true;
-            const origText = detectGpsBtnEl.querySelector("span").textContent;
-            detectGpsBtnEl.querySelector("span").textContent = "Acquiring GPS...";
-
-            navigator.geolocation.getCurrentPosition(
-                async (pos) => {
-                    currentGeo.latitude = pos.coords.latitude;
-                    currentGeo.longitude = pos.coords.longitude;
-                    currentGeo.isManual = false;
-                    await resolveCoordinatesName(pos.coords.latitude, pos.coords.longitude);
-                    detectGpsBtnEl.disabled = false;
-                    detectGpsBtnEl.querySelector("span").textContent = origText;
-                    if (locationModalEl) locationModalEl.style.display = "none";
-                },
-                (err) => {
-                    detectGpsBtnEl.disabled = false;
-                    detectGpsBtnEl.querySelector("span").textContent = origText;
-                    alert("GPS unavailable (" + err.message + "). On http:// connections, please pick a preset spot or type your location!");
-                },
-                { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-            );
+            autoDetectCurrentLocation(true);
         });
     }
 
@@ -156,6 +223,7 @@ function initGeolocation() {
                 currentGeo.latitude = lat;
                 currentGeo.longitude = lon;
                 currentGeo.isManual = true;
+                sessionStorage.setItem("thoughtstash_manual_location", JSON.stringify(currentGeo));
                 updateLocationBadge();
                 if (locationModalEl) locationModalEl.style.display = "none";
             }
@@ -180,6 +248,7 @@ function initGeolocation() {
                 currentGeo.latitude = data.lat;
                 currentGeo.longitude = data.lon;
                 currentGeo.isManual = true;
+                sessionStorage.setItem("thoughtstash_manual_location", JSON.stringify(currentGeo));
                 updateLocationBadge();
                 if (locationModalEl) locationModalEl.style.display = "none";
             }
@@ -217,10 +286,25 @@ async function resolveCoordinatesName(lat, lon) {
     }
 }
 
-function updateLocationBadge() {
+function updateLocationBadge(isLoading = false) {
     const textEl = document.getElementById("locationBadgeText");
-    if (textEl) {
-        textEl.textContent = currentGeo.locationName || "Set Location";
+    const badgeEl = document.getElementById("locationBadge");
+    if (!textEl) return;
+
+    if (isLoading) {
+        textEl.innerHTML = '<span class="loc-pulsing">Detecting location...</span>';
+        return;
+    }
+
+    const locName = currentGeo.locationName || "Current Location";
+    textEl.textContent = locName;
+
+    if (badgeEl) {
+        if (!currentGeo.isManual) {
+            badgeEl.setAttribute("title", "Auto-detected current location. Click to change or search.");
+        } else {
+            badgeEl.setAttribute("title", "Custom walk spot. Click to change.");
+        }
     }
 }
 

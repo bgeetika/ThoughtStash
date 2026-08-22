@@ -439,6 +439,17 @@ async def get_patterns(
 # ── Geolocation & Place Resolution Endpoints ────────────────────────
 
 
+@app.get("/api/geo/current")
+async def api_current_geo():
+    """Return default or detected initial geolocation."""
+    return {
+        "location_name": "Palo Alto, CA",
+        "latitude": 37.4419,
+        "longitude": -122.1430,
+        "is_manual": False
+    }
+
+
 @app.get("/api/geo/reverse")
 async def api_reverse_geo(lat: float, lon: float):
     """Reverse geocode coordinates to clean street/neighborhood and city."""
