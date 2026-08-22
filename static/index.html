@@ -8,7 +8,7 @@
     <!-- Branding Kit Typography (Newsreader, General Sans, JetBrains Mono) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..500;1,6..72,200..400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..600;1,6..72,200..600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     
     <!-- Leaflet Map CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
@@ -18,7 +18,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
     <link rel="stylesheet" href="/static/style.css">
-    <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600&display=swap" rel="stylesheet">
+    <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
     
     <!-- Favicon: Cairn on petrol -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 96 96&quot;><rect width=&quot;96&quot; height=&quot;96&quot; rx=&quot;21&quot; fill=&quot;%231D4E4B&quot;/><g transform=&quot;translate(15.36,15.36) scale(0.68)&quot; fill=&quot;none&quot; stroke=&quot;%23F4F4F1&quot; stroke-width=&quot;4&quot;><ellipse cx=&quot;48&quot; cy=&quot;80&quot; rx=&quot;30&quot; ry=&quot;8&quot;/><ellipse cx=&quot;48&quot; cy=&quot;60&quot; rx=&quot;23&quot; ry=&quot;7.5&quot;/><ellipse cx=&quot;48&quot; cy=&quot;42&quot; rx=&quot;16&quot; ry=&quot;7&quot;/><circle cx=&quot;48&quot; cy=&quot;22&quot; r=&quot;6&quot; fill=&quot;%23C1912B&quot; stroke=&quot;none&quot;/></g></svg>">
@@ -29,13 +29,13 @@
         <header class="app-header">
             <div class="brand-container">
                 <div class="brand-logo-mark">
-                    <svg viewBox="0 0 96 96" width="28" height="28" role="img" aria-label="Thought Stash">
-                        <g fill="none" stroke="currentColor" stroke-width="3">
+                    <svg viewBox="0 0 96 96" width="36" height="36" role="img" aria-label="Thought Stash">
+                        <g fill="none" stroke="currentColor" stroke-width="3.5">
                             <ellipse cx="48" cy="80" rx="30" ry="8"/>
                             <ellipse cx="48" cy="60" rx="23" ry="7.5"/>
                             <ellipse cx="48" cy="42" rx="16" ry="7"/>
                         </g>
-                        <circle cx="48" cy="22" r="5.5" fill="var(--petrol)"/>
+                        <circle cx="48" cy="22" r="6.5" fill="var(--color-amber)"/>
                     </svg>
                 </div>
                 <div class="brand-text">
@@ -51,30 +51,22 @@
             </div>
         </header>
 
-        <!-- Clean Navigation Dock -->
+        <!-- Clean Navigation Dock (Consolidated 4 Core Tabs) -->
         <nav class="nav-dock">
-            <button class="nav-btn active" data-tab="capture">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+            <button class="nav-btn active" data-tab="capture" aria-label="Record voice notes">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
                 <span>Record</span>
             </button>
-            <button class="nav-btn" data-tab="mapTab">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
-                <span>Map</span>
-            </button>
-            <button class="nav-btn" data-tab="graphTab">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
+            <button class="nav-btn" data-tab="connectionsTab" aria-label="Connections and spatial map">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
                 <span>Connections</span>
             </button>
-            <button class="nav-btn" data-tab="thoughts">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+            <button class="nav-btn" data-tab="timelineTab" aria-label="Timeline and pattern synthesis">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
                 <span>Timeline</span>
             </button>
-            <button class="nav-btn" data-tab="patterns">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="m13 13 6 6"/></svg>
-                <span>Patterns</span>
-            </button>
-            <button class="nav-btn" data-tab="chat">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <button class="nav-btn" data-tab="chatTab" aria-label="Ask your notes">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                 <span>Ask</span>
             </button>
         </nav>
@@ -86,8 +78,8 @@
             <section id="capture" class="tab-view active">
                 <div class="capture-stage">
                     <div class="page-intro">
-                        <h2>Capture your thoughts.</h2>
-                        <p class="subtitle">Voice notes organized by location, topics, and time.</p>
+                        <h2>Capture your <span class="serif-accent">thoughts</span>.</h2>
+                        <p class="subtitle">Voice notes automatically organized by location, topics, and long-term connections.</p>
                     </div>
 
                     <!-- Clean 3D Audio Visualizer Card -->
@@ -98,18 +90,21 @@
                             <button id="recordBtn" class="record-action-btn" aria-label="Record voice note">
                                 <div class="pulse-ring"></div>
                                 <div class="btn-core">
-                                    <svg class="mic-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                                    <svg class="mic-svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
                                     <span class="stop-box"></span>
                                 </div>
                             </button>
                             
                             <div class="record-meta">
                                 <div id="recordStatus" class="record-status-text">Tap to record a voice note</div>
-                                <div id="timer" class="record-timer-text" style="display:none">00:00</div>
+                                <div class="timer-cancel-row">
+                                    <div id="timer" class="record-timer-text" style="display:none">00:00</div>
+                                    <button id="cancelRecordingBtn" class="cancel-record-pill" style="display:none" title="Discard this recording">✕ Discard</button>
+                                </div>
                                 <div id="locationBadge" class="record-location-pill" title="Click to change or detect location">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/><circle cx="12" cy="10" r="3"/></svg>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/><circle cx="12" cy="10" r="3"/></svg>
                                     <span id="locationBadgeText">Palo Alto, CA</span>
-                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
                                 </div>
                             </div>
                         </div>
@@ -124,7 +119,7 @@
                             </div>
                             <div class="location-modal-body">
                                 <button id="detectGpsBtn" class="btn btn-secondary btn-full">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="22" x2="18" y1="12" y2="12"/><line x1="6" x2="2" y1="12" y2="12"/><line x1="12" x2="12" y1="6" y2="2"/><line x1="12" x2="12" y1="22" y2="18"/></svg>
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="22" x2="18" y1="12" y2="12"/><line x1="6" x2="2" y1="12" y2="12"/><line x1="12" x2="12" y1="6" y2="2"/><line x1="12" x2="12" y1="22" y2="18"/></svg>
                                     <span>Detect GPS Location</span>
                                 </button>
                                 <div class="location-divider"><span>or search a place</span></div>
@@ -150,7 +145,7 @@
                     <!-- Quick Text Fallback Input -->
                     <div class="quick-text-box">
                         <input type="text" id="textThoughtInput" placeholder="Or type a quick note..." autocomplete="off">
-                        <button id="textThoughtSubmit" class="quick-submit-btn">Save</button>
+                        <button id="textThoughtSubmit" class="quick-submit-btn">Save Note</button>
                     </div>
 
                     <!-- Processing State -->
@@ -158,7 +153,7 @@
                         <div class="loading-spinner"></div>
                         <div class="processing-info">
                             <h4>Transcribing note...</h4>
-                            <p>Organizing key points and connecting with past notes...</p>
+                            <p>Organizing key points, topics, and discovering connections...</p>
                         </div>
                     </div>
 
@@ -172,6 +167,10 @@
                             <div class="result-meta-area">
                                 <span id="resultMoodBadge" class="badge"></span>
                                 <span id="resultTimeLocation" class="badge badge-light"></span>
+                                <button id="deleteLatestThoughtBtn" class="btn-delete-subtle" title="Delete this note" aria-label="Delete this note">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                    <span>Delete</span>
+                                </button>
                             </div>
                         </div>
 
@@ -202,119 +201,199 @@
                 </div>
             </section>
 
-            <!-- 🗺️ 2. MAP TAB -->
-            <section id="mapTab" class="tab-view">
+            <!-- 🕸️ 2. CONSOLIDATED CONNECTIONS & MAP TAB -->
+            <section id="connectionsTab" class="tab-view">
                 <div class="page-intro-row">
                     <div>
-                        <h2>Walk Map</h2>
-                        <p class="subtitle">Places and paths where your thoughts were recorded.</p>
+                        <h2>Connections & <span class="serif-accent">Spatial Atlas</span></h2>
+                        <p class="subtitle">Interactive 3D knowledge graph and geographic journey across your notes.</p>
                     </div>
-                    <div class="category-legend">
-                        <div class="legend-chip"><span class="chip-color color-blue"></span> Tech</div>
-                        <div class="legend-chip"><span class="chip-color color-green"></span> Work</div>
-                        <div class="legend-chip"><span class="chip-color color-amber"></span> Family</div>
-                        <div class="legend-chip"><span class="chip-color color-coral"></span> Wellness</div>
+                    <div class="view-actions">
+                        <button id="resetGraphBtn" class="secondary-btn" title="Reset 3D camera to center">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                            <span>Center View</span>
+                        </button>
                     </div>
                 </div>
 
-                <div class="card map-frame">
-                    <div id="thoughtMap" class="leaflet-canvas"></div>
-                </div>
-            </section>
+                <div class="card connections-viewport-card">
+                    <!-- 3D Graph Container -->
+                    <div id="neural3DGraph" class="three-graph-canvas"></div>
+                    
+                    <!-- Leaflet Geographic Map Container (Toggleable) -->
+                    <div id="thoughtMap" class="leaflet-canvas" style="display:none"></div>
 
-            <!-- 🕸️ 3. CONNECTIONS GRAPH TAB -->
-            <section id="graphTab" class="tab-view">
-                <div class="page-intro-row">
-                    <div>
-                        <h2>Connections</h2>
-                        <p class="subtitle">Interactive view of your ideas, themes, and how thoughts connect.</p>
+                    <!-- Floating Interactive Legend Overlay -->
+                    <div class="connections-legend-card">
+                        <div class="legend-section-title">Theme Pillars</div>
+                        <div class="legend-items-grid">
+                            <div class="legend-item"><span class="legend-dot" style="background:#1D4E4B"></span> AI & Systems</div>
+                            <div class="legend-item"><span class="legend-dot" style="background:#B3732A"></span> Strategy & Work</div>
+                            <div class="legend-item"><span class="legend-dot" style="background:#B8573D"></span> Family & Events</div>
+                            <div class="legend-item"><span class="legend-dot" style="background:#4A6B56"></span> Health & Nature</div>
+                        </div>
+                        <div class="legend-section-title" style="margin-top: 8px;">Connections</div>
+                        <div class="legend-links-row">
+                            <span class="link-indicator"><span class="line-sample" style="background:#1D4E4B"></span> Evolves</span>
+                            <span class="link-indicator"><span class="line-sample dashed" style="background:#B3732A"></span> Inspires</span>
+                            <span class="link-indicator"><span class="line-sample" style="background:#B8573D"></span> Contradicts</span>
+                        </div>
                     </div>
-                    <button id="resetGraphBtn" class="secondary-btn">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                        <span>Center View</span>
+
+                    <!-- Hint / Instructions -->
+                    <div class="graph-hint">
+                        <span id="connectionsHintText">Click & drag to rotate · Scroll to zoom · Click any node to view note details</span>
+                    </div>
+
+                    <!-- Floating Map / 3D Toggle Pill (Bottom-Right) -->
+                    <button id="mapGraphToggleBtn" class="floating-atlas-toggle" type="button" aria-label="Toggle between 3D graph and map">
+                        <svg class="icon-map" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+                        <svg class="icon-graph" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
+                        <span id="mapGraphToggleLabel">View on Map</span>
                     </button>
                 </div>
-
-                <div class="card graph-frame">
-                    <div id="neural3DGraph" class="three-graph-canvas"></div>
-                    <div class="graph-hint">
-                        <span>Click and drag to rotate · Scroll to zoom · Click any node to open note</span>
-                    </div>
-                </div>
             </section>
 
-            <!-- 💭 4. TIMELINE TAB -->
-            <section id="thoughts" class="tab-view">
+            <!-- 💭 3. CONSOLIDATED TIMELINE & PATTERNS TAB -->
+            <section id="timelineTab" class="tab-view">
                 <div class="page-intro-row">
                     <div>
-                        <h2>All Notes</h2>
-                        <p class="subtitle">Chronological archive with search.</p>
+                        <h2>Timeline & <span class="serif-accent">Pattern Synthesis</span></h2>
+                        <p class="subtitle">Chronological archive of thoughts with on-demand synthesis across custom timeframes.</p>
                     </div>
                     <div class="search-bar">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
                         <input type="text" id="searchInput" placeholder="Search notes, topics, or places...">
                         <button id="searchBtn" class="search-btn">Search</button>
                     </div>
                 </div>
 
+                <!-- Integrated Pattern Synthesis Card -->
+                <div class="card pattern-synthesis-card">
+                    <div class="pattern-synthesis-header">
+                        <div class="pattern-header-text">
+                            <div class="pattern-badge-title">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--petrol)" stroke-width="2"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="m13 13 6 6"/></svg>
+                                <h3>Synthesize Thinking Patterns</h3>
+                            </div>
+                            <p class="pattern-sub">Generate trajectory reports, recurring themes, and proactive recommendations for any timeframe.</p>
+                        </div>
+                    </div>
+
+                    <!-- Timeframe Selector Controls -->
+                    <div class="timeframe-controls-bar">
+                        <div class="timeframe-presets">
+                            <button class="timeframe-chip" data-days="7">Last 7 Days</button>
+                            <button class="timeframe-chip active" data-days="35">Last 5 Weeks</button>
+                            <button class="timeframe-chip" data-days="90">Last 3 Months</button>
+                            <button class="timeframe-chip" data-days="365">Last 1 Year</button>
+                            <button class="timeframe-chip" data-days="0">All Time</button>
+                        </div>
+
+                        <div class="timeframe-custom-picker">
+                            <span class="custom-label">Custom:</span>
+                            <div class="custom-input-group">
+                                <input type="number" id="patternCustomVal" min="1" max="500" value="5" aria-label="Custom timeframe amount">
+                                <select id="patternCustomUnit" aria-label="Custom timeframe unit">
+                                    <option value="days">Days</option>
+                                    <option value="weeks" selected>Weeks</option>
+                                    <option value="months">Months</option>
+                                    <option value="years">Years</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button id="generatePatternsBtn" class="btn btn-primary generate-patterns-btn">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"/></svg>
+                            <span>Synthesize Patterns</span>
+                        </button>
+                    </div>
+
+                    <!-- Expandable/Collapsible Pattern Results Container -->
+                    <div id="patternsResult" class="patterns-collapsible-result" style="display:none">
+                        <div class="patterns-loading-indicator" style="display:none">
+                            <div class="loading-spinner"></div>
+                            <span>Analyzing thoughts and synthesizing multi-week patterns...</span>
+                        </div>
+                        <div id="patternsContentArea"></div>
+                    </div>
+                </div>
+
+                <!-- Notes Section Subheader -->
+                <div class="timeline-subheading-row">
+                    <h3 class="section-label">All Recorded Notes</h3>
+                    <span id="timelineCountBadge" class="count-badge">Loading...</span>
+                </div>
+
+                <!-- Color-Coded Notes Grid -->
                 <div id="thoughtsList" class="notes-grid">
                     <div class="empty-state">Loading notes...</div>
                 </div>
             </section>
 
-            <!-- 🔗 5. PATTERNS TAB -->
-            <section id="patterns" class="tab-view">
-                <div class="page-intro-row">
-                    <div>
-                        <h2>Patterns & Themes</h2>
-                        <p class="subtitle">Recurring topics, habits, and trends across your recent notes.</p>
-                    </div>
-                    <button id="analyzeBtn" class="primary-btn">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="m13 13 6 6"/></svg>
-                        <span>Analyze Notes</span>
-                    </button>
+            <!-- 💬 4. ELEVATED ASK CHAT TAB -->
+            <section id="chatTab" class="tab-view">
+                <div class="page-intro">
+                    <h2>Ask your <span class="serif-accent">stash</span>.</h2>
+                    <p class="subtitle">Conversational recall and synthesis grounded in your notes & verified with web search.</p>
                 </div>
 
-                <div id="patternsResult" class="patterns-container">
-                    <div class="empty-state">Click "Analyze Notes" to review recurring themes and trends across your recordings.</div>
-                </div>
-            </section>
-
-            <!-- 💬 6. ASK CHAT TAB -->
-            <section id="chat" class="tab-view">
-                <div class="card chat-card">
+                <div class="card chat-card-elevated">
                     <div class="chat-header">
-                        <div>
-                            <h3>Ask Your Notes</h3>
-                            <p class="chat-sub">Search and ask questions across your recorded thoughts.</p>
+                        <div class="chat-header-info">
+                            <h3>Thinking Partner</h3>
+                            <span class="chat-status-sub">Grounded in your private notes</span>
                         </div>
                         <button id="newChatBtn" class="new-chat-btn" title="Start a new conversation">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                            <span>New Chat</span>
+                            <span>New Conversation</span>
                         </button>
                     </div>
 
-                    <div id="chatMessages" class="chat-thread">
+                    <div id="chatMessages" class="chat-thread-elevated">
                         <div class="chat-bubble assistant">
                             <div class="bubble-avatar">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--petrol)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                                <svg width="18" height="18" viewBox="0 0 96 96" fill="none">
+                                    <g stroke="var(--petrol)" stroke-width="6">
+                                        <ellipse cx="48" cy="80" rx="30" ry="8"/>
+                                        <ellipse cx="48" cy="60" rx="23" ry="7.5"/>
+                                        <ellipse cx="48" cy="42" rx="16" ry="7"/>
+                                    </g>
+                                    <circle cx="48" cy="22" r="7" fill="var(--color-amber)"/>
+                                </svg>
                             </div>
                             <div class="bubble-body">
-                                <div class="bubble-summary">Hi! Ask me anything about your past notes, walks, or ideas.</div>
-                                <div class="prompt-chips-row">
-                                    <button class="prompt-chip" type="button" data-prompt="What have I noted about hydration and health?">Hydration habits</button>
-                                    <button class="prompt-chip" type="button" data-prompt="What were my ideas about AI agents and memory?">AI agent ideas</button>
-                                    <button class="prompt-chip" type="button" data-prompt="What did I plan for my parents' anniversary?">Parents' anniversary</button>
-                                    <button class="prompt-chip" type="button" data-prompt="What notes did I record during my recent walks?">Recent walk notes</button>
+                                <div class="bubble-summary">Hi! Ask me anything about your past notes, walks, or ideas. What are you thinking through today?</div>
+                                <div class="prompt-grid-chips">
+                                    <button class="prompt-card" type="button" data-prompt="What have I noted about hydration and health?">
+                                        <span class="prompt-icon">💧</span>
+                                        <span class="prompt-title">Hydration habits</span>
+                                        <span class="prompt-desc">Past reflections on drinking water & wellness</span>
+                                    </button>
+                                    <button class="prompt-card" type="button" data-prompt="What were my ideas about AI agents and memory?">
+                                        <span class="prompt-icon">🧠</span>
+                                        <span class="prompt-title">AI agent architectures</span>
+                                        <span class="prompt-desc">Long-horizon memory & edge intelligence</span>
+                                    </button>
+                                    <button class="prompt-card" type="button" data-prompt="What did I plan for my parents&#39; anniversary?">
+                                        <span class="prompt-icon">👨‍👩‍👧</span>
+                                        <span class="prompt-title">Parents&#39; anniversary</span>
+                                        <span class="prompt-desc">Itinerary, Carmel reservations & gift ideas</span>
+                                    </button>
+                                    <button class="prompt-card" type="button" data-prompt="What notes did I record during my recent walks?">
+                                        <span class="prompt-icon">🌲</span>
+                                        <span class="prompt-title">Recent walk notes</span>
+                                        <span class="prompt-desc">Thoughts from Stanford Dish, Shoreline & Cupertino</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="chat-input-bar">
+                    <div class="chat-input-dock">
                         <input type="text" id="chatInput" placeholder="Ask about past ideas, places, or notes..." autocomplete="off">
-                        <button id="chatSendBtn" class="chat-send-btn" aria-label="Send">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        <button id="chatSendBtn" class="chat-send-btn" aria-label="Send message">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                         </button>
                     </div>
                 </div>
@@ -328,9 +407,9 @@
             <div class="drawer-header">
                 <div class="category-tag" id="inspectorCategoryBadge">
                     <span class="dot"></span>
-                    <span id="inspectorCategoryText">Tech</span>
+                    <span id="inspectorCategoryText">AI & Systems</span>
                 </div>
-                <button id="closeInspectorBtn" class="drawer-close-btn" aria-label="Close">
+                <button id="closeInspectorBtn" class="drawer-close-btn" aria-label="Close drawer">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
                 </button>
             </div>
@@ -354,8 +433,15 @@
                 </div>
 
                 <div class="drawer-section" id="inspectorInsightsSection">
-                    <label>Key Points</label>
+                    <label>Key Takeaways</label>
                     <ul id="inspectorInsightsList" class="bullet-list"></ul>
+                </div>
+
+                <div class="drawer-actions-footer">
+                    <button id="drawerDeleteBtn" class="btn btn-danger-subtle" type="button">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        <span>Delete Note</span>
+                    </button>
                 </div>
             </div>
         </div>

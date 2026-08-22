@@ -514,7 +514,7 @@ class TestAppEndpoints(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         points = res.json()
         self.assertTrue(len(points) >= 1)
-        self.assertEqual(points[0]["category"], "Work")
+        self.assertEqual(points[0]["category"], "Strategy & Work")
 
     def test_graph_endpoint(self):
         """GET /api/graph -> returns nodes and edges for 3D force graph."""
@@ -591,6 +591,25 @@ class TestAppEndpoints(unittest.TestCase):
         self.assertIn("Scribe", agent_names)
         self.assertIn("Connector", agent_names)
         self.assertIn("Assistant", agent_names)
+
+    def test_delete_thought_endpoint(self):
+        """DELETE /api/thoughts/{id} -> deletes thought and returns 200."""
+        t_id = db.create_pending_thought(
+            audio_path="/tmp/to_delete.webm",
+            created_at=datetime.now(timezone.utc).isoformat(),
+        )
+        # Delete existing thought
+        res = self.client.delete(f"/api/thoughts/{t_id}")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["status"], "deleted")
+
+        # Verify not found after deletion
+        get_res = self.client.get(f"/api/thoughts/{t_id}")
+        self.assertEqual(get_res.status_code, 404)
+
+        # Deleting again returns 404
+        res2 = self.client.delete(f"/api/thoughts/{t_id}")
+        self.assertEqual(res2.status_code, 404)
 
 
 if __name__ == "__main__":

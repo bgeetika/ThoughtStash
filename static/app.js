@@ -1,6 +1,6 @@
 /**
  * ThoughtStash — Frontend Application Logic
- * Clean, minimal, light product design
+ * Stone & Paper Design System
  */
 
 let isRecording = false;
@@ -9,55 +9,79 @@ let audioChunks = [];
 let recordTimer = null;
 let seconds = 0;
 let currentGeo = { latitude: 37.4419, longitude: -122.1430, locationName: "Palo Alto, CA", isManual: false };
-let currentConversationId = 'conv_' + Date.now();
+let currentConversationId = "conv_" + Date.now();
 let chatHistory = [];
 let leafletMap = null;
 let mapMarkers = [];
 let mapPolylines = [];
+let isMapMode = false;
+
+function formatDate(isoStr) {
+    if (!isoStr) return "Recent";
+    try {
+        const d = new Date(isoStr.replace("Z", "+00:00"));
+        if (isNaN(d.getTime())) return isoStr.slice(0, 10);
+        return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    } catch (e) {
+        return (isoStr || "").slice(0, 10);
+    }
+}
 
 // DOM Elements
-const recordBtn = document.getElementById('recordBtn');
-const recordStatus = document.getElementById('recordStatus');
-const timerEl = document.getElementById('timer');
-const locationBadge = document.getElementById('locationBadge');
-const processing = document.getElementById('processing');
-const latestThought = document.getElementById('latestThought');
-const resultSummary = document.getElementById('resultSummary');
-const resultMoodBadge = document.getElementById('resultMoodBadge');
-const resultTimeLocation = document.getElementById('resultTimeLocation');
-const resultTranscript = document.getElementById('resultTranscript');
-const resultTopics = document.getElementById('resultTopics');
-const resultInsights = document.getElementById('resultInsights');
-const connectorInsights = document.getElementById('connectorInsights');
-const connectorContent = document.getElementById('connectorContent');
-const thoughtsList = document.getElementById('thoughtsList');
-const searchInput = document.getElementById('searchInput');
-const searchBtn = document.getElementById('searchBtn');
-const analyzeBtn = document.getElementById('analyzeBtn');
-const patternsResult = document.getElementById('patternsResult');
-const chatMessages = document.getElementById('chatMessages');
-const chatInput = document.getElementById('chatInput');
-const chatSendBtn = document.getElementById('chatSendBtn');
+const recordBtn = document.getElementById("recordBtn");
+const recordStatus = document.getElementById("recordStatus");
+const timerEl = document.getElementById("timer");
+const cancelRecordingBtn = document.getElementById("cancelRecordingBtn");
+const locationBadge = document.getElementById("locationBadge");
+const processing = document.getElementById("processing");
+const latestThought = document.getElementById("latestThought");
+const deleteLatestThoughtBtn = document.getElementById("deleteLatestThoughtBtn");
+const resultSummary = document.getElementById("resultSummary");
+const resultMoodBadge = document.getElementById("resultMoodBadge");
+const resultTimeLocation = document.getElementById("resultTimeLocation");
+const resultTranscript = document.getElementById("resultTranscript");
+const resultTopics = document.getElementById("resultTopics");
+const resultInsights = document.getElementById("resultInsights");
+const connectorInsights = document.getElementById("connectorInsights");
+const connectorContent = document.getElementById("connectorContent");
+const thoughtsList = document.getElementById("thoughtsList");
+const searchInput = document.getElementById("searchInput");
+const searchBtn = document.getElementById("searchBtn");
+const chatMessages = document.getElementById("chatMessages");
+const chatInput = document.getElementById("chatInput");
+const chatSendBtn = document.getElementById("chatSendBtn");
+const newChatBtn = document.getElementById("newChatBtn");
+const drawer = document.getElementById("thoughtInspectorDrawer");
+const closeDrawerBtn = document.getElementById("closeInspectorBtn");
+const drawerDeleteBtn = document.getElementById("drawerDeleteBtn");
 
-// ── 1. Tab Navigation ──────────────────────────────────────────────
+// ── 1. Tab Navigation (4 Consolidated Tabs) ─────────────────────────
 
-document.querySelectorAll('.nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
+document.querySelectorAll(".nav-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+        document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".tab-view").forEach(v => v.classList.remove("active"));
 
-        btn.classList.add('active');
+        btn.classList.add("active");
         const targetId = btn.dataset.tab;
         const targetView = document.getElementById(targetId);
-        if (targetView) targetView.classList.add('active');
+        if (targetView) targetView.classList.add("active");
 
-        if (targetId === 'thoughts') loadThoughts();
-        if (targetId === 'mapTab') {
-            if (!leafletMap) initMap();
-            else setTimeout(() => leafletMap.invalidateSize(), 150);
+        if (targetId === "timelineTab") {
+            loadThoughts();
         }
-        if (targetId === 'graphTab') {
-            setTimeout(() => init3DGraph(), 60);
+        if (targetId === "connectionsTab") {
+            if (!isMapMode) {
+                setTimeout(() => init3DGraph(), 60);
+            } else {
+                setTimeout(() => {
+                    if (!leafletMap) initMap();
+                    else leafletMap.invalidateSize();
+                }, 100);
+            }
+        }
+        if (targetId === "chatTab") {
+            setTimeout(() => chatInput?.focus(), 100);
         }
     });
 });
@@ -67,41 +91,40 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
 function initGeolocation() {
     updateLocationBadge();
 
-    // Setup Location Modal Listeners
-    const locationBadgeEl = document.getElementById('locationBadge');
-    const locationModalEl = document.getElementById('locationModal');
-    const closeLocationModalBtnEl = document.getElementById('closeLocationModalBtn');
-    const detectGpsBtnEl = document.getElementById('detectGpsBtn');
-    const customLocationInputEl = document.getElementById('customLocationInput');
-    const applyLocationBtnEl = document.getElementById('applyLocationBtn');
+    const locationBadgeEl = document.getElementById("locationBadge");
+    const locationModalEl = document.getElementById("locationModal");
+    const closeLocationModalBtnEl = document.getElementById("closeLocationModalBtn");
+    const detectGpsBtnEl = document.getElementById("detectGpsBtn");
+    const customLocationInputEl = document.getElementById("customLocationInput");
+    const applyLocationBtnEl = document.getElementById("applyLocationBtn");
 
     if (locationBadgeEl && locationModalEl) {
-        locationBadgeEl.addEventListener('click', () => {
-            locationModalEl.style.display = 'flex';
+        locationBadgeEl.addEventListener("click", () => {
+            locationModalEl.style.display = "flex";
         });
     }
 
     if (closeLocationModalBtnEl && locationModalEl) {
-        closeLocationModalBtnEl.addEventListener('click', () => {
-            locationModalEl.style.display = 'none';
+        closeLocationModalBtnEl.addEventListener("click", () => {
+            locationModalEl.style.display = "none";
         });
     }
 
     if (locationModalEl) {
-        locationModalEl.addEventListener('click', (e) => {
-            if (e.target === locationModalEl) locationModalEl.style.display = 'none';
+        locationModalEl.addEventListener("click", (e) => {
+            if (e.target === locationModalEl) locationModalEl.style.display = "none";
         });
     }
 
     if (detectGpsBtnEl) {
-        detectGpsBtnEl.addEventListener('click', () => {
+        detectGpsBtnEl.addEventListener("click", () => {
             if (!("geolocation" in navigator)) {
                 alert("Geolocation is not supported by your browser.");
                 return;
             }
             detectGpsBtnEl.disabled = true;
-            const origText = detectGpsBtnEl.querySelector('span').textContent;
-            detectGpsBtnEl.querySelector('span').textContent = "Acquiring GPS...";
+            const origText = detectGpsBtnEl.querySelector("span").textContent;
+            detectGpsBtnEl.querySelector("span").textContent = "Acquiring GPS...";
 
             navigator.geolocation.getCurrentPosition(
                 async (pos) => {
@@ -110,21 +133,21 @@ function initGeolocation() {
                     currentGeo.isManual = false;
                     await resolveCoordinatesName(pos.coords.latitude, pos.coords.longitude);
                     detectGpsBtnEl.disabled = false;
-                    detectGpsBtnEl.querySelector('span').textContent = origText;
-                    if (locationModalEl) locationModalEl.style.display = 'none';
+                    detectGpsBtnEl.querySelector("span").textContent = origText;
+                    if (locationModalEl) locationModalEl.style.display = "none";
                 },
                 (err) => {
                     detectGpsBtnEl.disabled = false;
-                    detectGpsBtnEl.querySelector('span').textContent = origText;
-                    alert(`GPS unavailable (${err.message}). On http:// connections, browsers require manual selection or localhost. Please pick a preset spot or type your location!`);
+                    detectGpsBtnEl.querySelector("span").textContent = origText;
+                    alert("GPS unavailable (" + err.message + "). On http:// connections, please pick a preset spot or type your location!");
                 },
                 { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
             );
         });
     }
 
-    document.querySelectorAll('.place-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
+    document.querySelectorAll(".place-chip").forEach(chip => {
+        chip.addEventListener("click", () => {
             const name = chip.dataset.name;
             const lat = parseFloat(chip.dataset.lat);
             const lon = parseFloat(chip.dataset.lon);
@@ -134,7 +157,7 @@ function initGeolocation() {
                 currentGeo.longitude = lon;
                 currentGeo.isManual = true;
                 updateLocationBadge();
-                if (locationModalEl) locationModalEl.style.display = 'none';
+                if (locationModalEl) locationModalEl.style.display = "none";
             }
         });
     });
@@ -146,11 +169,11 @@ function initGeolocation() {
 
         if (applyLocationBtnEl) {
             applyLocationBtnEl.disabled = true;
-            applyLocationBtnEl.textContent = '...';
+            applyLocationBtnEl.textContent = "...";
         }
 
         try {
-            const res = await fetch(`/api/geo/search?q=${encodeURIComponent(query)}`);
+            const res = await fetch("/api/geo/search?q=" + encodeURIComponent(query));
             if (res.ok) {
                 const data = await res.json();
                 currentGeo.locationName = data.name || query;
@@ -158,153 +181,143 @@ function initGeolocation() {
                 currentGeo.longitude = data.lon;
                 currentGeo.isManual = true;
                 updateLocationBadge();
-                if (locationModalEl) locationModalEl.style.display = 'none';
+                if (locationModalEl) locationModalEl.style.display = "none";
             }
         } catch (e) {
             console.error("Location search error:", e);
         } finally {
             if (applyLocationBtnEl) {
                 applyLocationBtnEl.disabled = false;
-                applyLocationBtnEl.textContent = 'Set';
+                applyLocationBtnEl.textContent = "Set";
             }
         }
     }
 
     if (applyLocationBtnEl) {
-        applyLocationBtnEl.addEventListener('click', applyCustomLocation);
+        applyLocationBtnEl.addEventListener("click", applyCustomLocation);
     }
     if (customLocationInputEl) {
-        customLocationInputEl.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') applyCustomLocation();
+        customLocationInputEl.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") applyCustomLocation();
         });
-    }
-
-    // Initial GPS attempt
-    if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(
-            async (pos) => {
-                if (!currentGeo.isManual) {
-                    currentGeo.latitude = pos.coords.latitude;
-                    currentGeo.longitude = pos.coords.longitude;
-                    await resolveCoordinatesName(pos.coords.latitude, pos.coords.longitude);
-                }
-            },
-            () => {
-                // If browser denies, keep preset Palo Alto or resolve
-                if (!currentGeo.isManual && currentGeo.latitude && currentGeo.longitude) {
-                    resolveCoordinatesName(currentGeo.latitude, currentGeo.longitude);
-                }
-            },
-            { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
-        );
     }
 }
 
 async function resolveCoordinatesName(lat, lon) {
     try {
-        const res = await fetch(`/api/geo/reverse?lat=${lat}&lon=${lon}`);
+        const res = await fetch("/api/geo/reverse?lat=" + lat + "&lon=" + lon);
         if (res.ok) {
             const data = await res.json();
-            if (data.location_name) {
-                currentGeo.locationName = data.location_name;
-            }
+            currentGeo.locationName = data.location_name || lat.toFixed(4) + ", " + lon.toFixed(4);
+            updateLocationBadge();
         }
     } catch (e) {
-        console.warn("Reverse geocode error:", e);
+        currentGeo.locationName = lat.toFixed(4) + ", " + lon.toFixed(4);
+        updateLocationBadge();
     }
-    updateLocationBadge();
 }
 
 function updateLocationBadge() {
-    const textEl = document.getElementById('locationBadgeText');
+    const textEl = document.getElementById("locationBadgeText");
     if (textEl) {
-        textEl.textContent = currentGeo.locationName || 'Set Location';
+        textEl.textContent = currentGeo.locationName || "Set Location";
     }
 }
 
-// ── 3. 3D Audio Visualizer (Clean Pearlescent Orb) ──────────────────
+// ── 3. 3D Audio Visualizer (Ceramic & Earthy Matte Palette) ──────────
 
-let orbScene, orbCamera, orbRenderer, orbGroup, orbParticles;
-let audioContext, audioAnalyser, audioDataArray;
+let orbScene, orbCamera, orbRenderer, orbGroup;
+let audioAnalyser, audioDataArray;
 let orbAnimationId;
 
 function init3DAudioOrb() {
-    const container = document.getElementById('threeOrbCanvas');
-    if (!container || typeof THREE === 'undefined') return;
+    const container = document.getElementById("threeOrbCanvas");
+    if (!container || typeof THREE === "undefined") return;
 
-    container.innerHTML = '';
-    const width = container.clientWidth || 640;
-    const height = container.clientHeight || 320;
+    if (orbAnimationId) {
+        cancelAnimationFrame(orbAnimationId);
+        orbAnimationId = null;
+    }
+    if (orbRenderer) {
+        try {
+            orbRenderer.dispose();
+            orbRenderer.forceContextLoss();
+        } catch (e) {}
+        orbRenderer = null;
+    }
+
+    container.innerHTML = "";
+    const width = container.clientWidth || 720;
+    const height = container.clientHeight || 420;
 
     orbScene = new THREE.Scene();
     orbCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    orbCamera.position.set(0, 0, 110);
+    orbCamera.position.set(0, 0, 115);
 
     orbRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     orbRenderer.setSize(width, height);
     orbRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(orbRenderer.domElement);
 
-    // Studio Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+    // Warm Studio Lighting (Balanced to prevent washing out colors)
+    const ambientLight = new THREE.AmbientLight(0xFBF9F5, 0.7);
     orbScene.add(ambientLight);
 
-    const dirLight1 = new THREE.DirectionalLight(0x3b82f6, 1.5);
-    dirLight1.position.set(50, 50, 80);
+    const dirLight1 = new THREE.DirectionalLight(0xEAE6DC, 0.7);
+    dirLight1.position.set(60, 60, 80);
     orbScene.add(dirLight1);
 
-    const dirLight2 = new THREE.DirectionalLight(0x10b981, 1.2);
-    dirLight2.position.set(-50, -50, 80);
+    const dirLight2 = new THREE.DirectionalLight(0xD8D7D0, 0.4);
+    dirLight2.position.set(-60, -60, 80);
     orbScene.add(dirLight2);
 
     orbGroup = new THREE.Group();
     orbScene.add(orbGroup);
 
-    // Central Sphere (Soft Pearlescent)
-    const coreGeo = new THREE.IcosahedronGeometry(22, 3);
+    // Central Sphere (Warm Matte Stone)
+    const coreGeo = new THREE.IcosahedronGeometry(23, 3);
     const coreMat = new THREE.MeshStandardMaterial({
-        color: 0xf8fafc,
-        roughness: 0.4,
-        metalness: 0.1,
+        color: 0xF4F4F1,
+        roughness: 0.85,
+        metalness: 0.0,
         transparent: true,
-        opacity: 0.85
+        opacity: 0.95
     });
     const coreMesh = new THREE.Mesh(coreGeo, coreMat);
     orbGroup.add(coreMesh);
 
-    // Subtle Node Rings (Blue, Green, Amber, Coral)
-    const nodeColors = [0x3b82f6, 0x10b981, 0xf59e0b, 0xef4444];
+    // Subtle Earthy Node Rings (Petrol, Ochre, Terracotta, Sage)
+    const nodeColors = [0x1D4E4B, 0xB3732A, 0xB8573D, 0x4A6B56];
     const nodeCount = 8;
-    const ringRadius = 36;
+    const ringRadius = 38;
     const nodeMeshes = [];
 
     for (let i = 0; i < nodeCount; i++) {
         const angle = (i / nodeCount) * Math.PI * 2;
-        const nGeo = new THREE.SphereGeometry(2.5, 16, 16);
+        const nGeo = new THREE.SphereGeometry(2.8, 24, 24);
         const col = nodeColors[i % nodeColors.length];
-        const nMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.2 });
+        const nMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.8, metalness: 0.0 });
         const nMesh = new THREE.Mesh(nGeo, nMat);
         nMesh.position.set(
             Math.cos(angle) * ringRadius,
-            Math.sin(angle) * (ringRadius * 0.7),
-            Math.sin(angle * 2) * 12
+            Math.sin(angle) * (ringRadius * 0.72),
+            Math.sin(angle * 2) * 14
         );
         orbGroup.add(nMesh);
         nodeMeshes.push(nMesh);
     }
 
-    // Connect nodes with light lines
+    // Connect nodes with soft stone lines
     const lineCoords = [];
     for (let i = 0; i < nodeCount; i++) {
         const p1 = nodeMeshes[i].position;
         const p2 = nodeMeshes[(i + 1) % nodeCount].position;
         lineCoords.push(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
-        // Connect to center
         lineCoords.push(0, 0, 0, p1.x, p1.y, p1.z);
     }
     const lineGeo = new THREE.BufferGeometry();
-    lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(lineCoords, 3));
-    const lineMat = new THREE.LineBasicMaterial({ color: 0xcbd5e1, transparent: true, opacity: 0.6 });
+    lineGeo.setAttribute("position", new THREE.Float32BufferAttribute(lineCoords, 3));
+    const lineMat = new THREE.LineBasicMaterial({ color: 0xD4D3CB, transparent: true, opacity: 0.6 });
     const lines = new THREE.LineSegments(lineGeo, lineMat);
     orbGroup.add(lines);
 
@@ -317,11 +330,11 @@ function init3DAudioOrb() {
             let sum = 0;
             for (let i = 0; i < audioDataArray.length; i++) sum += audioDataArray[i];
             const avg = sum / audioDataArray.length;
-            audioScale = 1.0 + (avg / 255.0) * 0.4;
+            audioScale = 1.0 + (avg / 255.0) * 0.35;
         }
 
-        orbGroup.rotation.y += 0.005;
-        orbGroup.rotation.x += 0.002;
+        orbGroup.rotation.y += 0.004;
+        orbGroup.rotation.x += 0.0015;
         coreMesh.scale.set(audioScale, audioScale, audioScale);
 
         orbRenderer.render(orbScene, orbCamera);
@@ -329,325 +342,328 @@ function init3DAudioOrb() {
     animateOrb();
 }
 
-// ── 4. Voice Recording ─────────────────────────────────────────────
+// ── 4. Voice Recording & Discard Action ─────────────────────────────
 
 function getSupportedMimeType() {
-    const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/aac', 'audio/wav'];
+    const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/aac", "audio/wav"];
     for (const type of candidates) {
         if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(type)) {
             return type;
         }
     }
-    return '';
+    return "";
 }
 
-recordBtn.addEventListener('click', async () => {
-    if (!isRecording) {
-        initGeolocation();
-        await startRecording();
-    } else {
-        stopRecording();
-    }
-});
-
 async function startRecording() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert('Microphone access requires HTTPS or localhost.');
-        return;
-    }
-
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        
-        try {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const source = audioContext.createMediaStreamSource(stream);
-            audioAnalyser = audioContext.createAnalyser();
-            audioAnalyser.fftSize = 64;
-            source.connect(audioAnalyser);
-            audioDataArray = new Uint8Array(audioAnalyser.frequencyBinCount);
-        } catch (e) {
-            console.warn("AudioContext visualizer skipped:", e);
-        }
-
-        const selectedMime = getSupportedMimeType();
-        const options = selectedMime ? { mimeType: selectedMime } : {};
+        const mimeType = getSupportedMimeType();
+        const options = mimeType ? { mimeType } : {};
         mediaRecorder = new MediaRecorder(stream, options);
         audioChunks = [];
+
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            const audioCtx = new AudioCtx();
+            const source = audioCtx.createMediaStreamSource(stream);
+            audioAnalyser = audioCtx.createAnalyser();
+            audioAnalyser.fftSize = 64;
+            audioDataArray = new Uint8Array(audioAnalyser.frequencyBinCount);
+            source.connect(audioAnalyser);
+        } catch (e) {
+            console.warn("Audio analyser unavailable:", e);
+        }
 
         mediaRecorder.ondataavailable = (e) => {
             if (e.data && e.data.size > 0) audioChunks.push(e.data);
         };
 
-        mediaRecorder.onstop = async () => {
-            stream.getTracks().forEach(track => track.stop());
-            if (audioContext && audioContext.state !== 'closed') {
-                audioContext.close();
-            }
+        mediaRecorder.onstop = () => {
             if (audioChunks.length > 0) {
-                const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
-                await uploadThoughtAudio(audioBlob, mediaRecorder.mimeType);
+                const recordedBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/webm" });
+                uploadAudio(recordedBlob);
             }
+            stream.getTracks().forEach(track => track.stop());
         };
 
         mediaRecorder.start(250);
         isRecording = true;
         seconds = 0;
-        recordBtn.classList.add('recording');
-        recordStatus.textContent = 'Listening...';
-        timerEl.style.display = 'block';
-        updateTimer();
-        recordTimer = setInterval(() => { seconds++; updateTimer(); }, 1000);
+        timerEl.textContent = "00:00";
+        timerEl.style.display = "inline-block";
+        if (cancelRecordingBtn) cancelRecordingBtn.style.display = "inline-block";
+
+        recordBtn.classList.add("recording");
+        recordStatus.textContent = "Listening... tap to finish";
+
+        recordTimer = setInterval(() => {
+            seconds++;
+            const mins = String(Math.floor(seconds / 60)).padStart(2, "0");
+            const secs = String(seconds % 60).padStart(2, "0");
+            timerEl.textContent = mins + ":" + secs;
+        }, 1000);
 
     } catch (err) {
-        alert(`Could not access microphone: ${err.message}`);
+        console.error("Microphone access error:", err);
+        alert("Could not access microphone. Please grant permission or type a note below.");
     }
 }
 
 function stopRecording() {
-    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
         mediaRecorder.stop();
     }
-    isRecording = false;
     clearInterval(recordTimer);
-    recordBtn.classList.remove('recording');
-    recordStatus.textContent = 'Processing voice note...';
-    timerEl.style.display = 'none';
+    recordTimer = null;
+    isRecording = false;
+    recordBtn.classList.remove("recording");
+    recordStatus.textContent = "Processing voice note...";
+    timerEl.style.display = "none";
+    if (cancelRecordingBtn) cancelRecordingBtn.style.display = "none";
 }
 
-function updateTimer() {
-    const m = String(Math.floor(seconds / 60)).padStart(2, '0');
-    const s = String(seconds % 60).padStart(2, '0');
-    timerEl.textContent = `${m}:${s}`;
+function discardRecording() {
+    isRecording = false;
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.onstop = null;
+        try { mediaRecorder.stop(); } catch (e) {}
+    }
+    if (mediaRecorder && mediaRecorder.stream) {
+        mediaRecorder.stream.getTracks().forEach(t => t.stop());
+    }
+    clearInterval(recordTimer);
+    recordTimer = null;
+    seconds = 0;
+    audioChunks = [];
+
+    recordBtn.classList.remove("recording");
+    recordStatus.textContent = "Recording discarded";
+    timerEl.style.display = "none";
+    if (cancelRecordingBtn) cancelRecordingBtn.style.display = "none";
+    setTimeout(() => {
+        if (!isRecording) recordStatus.textContent = "Tap to record a voice note";
+    }, 2000);
 }
 
-// ── 5. Upload & Process Thought ────────────────────────────────────
+if (recordBtn) {
+    recordBtn.addEventListener("click", () => {
+        if (!isRecording) startRecording();
+        else stopRecording();
+    });
+}
 
-async function uploadThoughtAudio(blob, mimeType) {
-    latestThought.style.display = 'none';
-    connectorInsights.style.display = 'none';
-    processing.style.display = 'flex';
+if (cancelRecordingBtn) {
+    cancelRecordingBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        discardRecording();
+    });
+}
 
-    const ext = (mimeType && mimeType.includes('mp4')) ? 'mp4' :
-                (mimeType && mimeType.includes('wav')) ? 'wav' : 'webm';
+// ── 5. Note Upload & Creation ───────────────────────────────────────
 
+async function uploadAudio(blob) {
+    processing.style.display = "flex";
+    latestThought.style.display = "none";
+    connectorInsights.style.display = "none";
+
+    const ext = blob.type.includes("mp4") ? "mp4" : (blob.type.includes("wav") ? "wav" : "webm");
     const formData = new FormData();
-    formData.append('audio', blob, `note.${ext}`);
-    formData.append('client_timestamp', new Date().toISOString());
-    if (currentGeo.latitude !== null) formData.append('latitude', currentGeo.latitude);
-    if (currentGeo.longitude !== null) formData.append('longitude', currentGeo.longitude);
-    if (currentGeo.locationName) formData.append('location_name', currentGeo.locationName);
+    formData.append("audio", blob, "recording_" + Date.now() + "." + ext);
+    formData.append("latitude", currentGeo.latitude);
+    formData.append("longitude", currentGeo.longitude);
+    formData.append("location_name", currentGeo.locationName);
 
     try {
-        const res = await fetch('/api/thoughts', { method: 'POST', body: formData });
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.detail || 'Processing failed');
-        }
+        const res = await fetch("/api/thoughts", { method: "POST", body: formData });
+        if (!res.ok) throw new Error("Upload failed");
         const thought = await res.json();
-        recordStatus.textContent = 'Tap to record a voice note';
-        showThoughtResult(thought);
-        pollConnectorInsights(thought.id);
-
-        if (leafletMap) loadMapPoints();
-        if (graph3DRenderer) init3DGraph();
-
-    } catch (err) {
-        recordStatus.textContent = `Error: ${err.message}`;
+        showResult(thought);
+    } catch (e) {
+        console.error("Audio upload error:", e);
+        recordStatus.textContent = "Error processing voice note.";
     } finally {
-        processing.style.display = 'none';
+        processing.style.display = "none";
+        if (!isRecording) recordStatus.textContent = "Tap to record a voice note";
     }
 }
 
-// Quick Text Input
-const textInput = document.getElementById('textThoughtInput');
-const textSubmit = document.getElementById('textThoughtSubmit');
+const textThoughtInput = document.getElementById("textThoughtInput");
+const textThoughtSubmit = document.getElementById("textThoughtSubmit");
 
-async function handleTextThoughtSubmit() {
-    if (!textInput) return;
-    const text = textInput.value.trim();
+async function submitTextThought() {
+    if (!textThoughtInput) return;
+    const text = textThoughtInput.value.trim();
     if (!text) return;
 
-    textInput.value = '';
-    textSubmit.disabled = true;
-    textSubmit.textContent = 'Saving...';
-
-    latestThought.style.display = 'none';
-    connectorInsights.style.display = 'none';
-    processing.style.display = 'flex';
+    processing.style.display = "flex";
+    latestThought.style.display = "none";
+    connectorInsights.style.display = "none";
+    textThoughtInput.value = "";
 
     try {
-        const payload = {
-            text: text,
-            latitude: currentGeo.latitude,
-            longitude: currentGeo.longitude,
-            location_name: currentGeo.locationName,
-            client_timestamp: new Date().toISOString()
-        };
-
-        const res = await fetch('/api/thoughts/text', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+        const res = await fetch("/api/thoughts/text", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                text: text,
+                latitude: currentGeo.latitude,
+                longitude: currentGeo.longitude,
+                location_name: currentGeo.locationName
+            })
         });
 
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.detail || 'Capture failed');
-        }
-
+        if (!res.ok) throw new Error("Failed to save text thought");
         const thought = await res.json();
-        showThoughtResult(thought);
-        pollConnectorInsights(thought.id);
-
-        if (leafletMap) loadMapPoints();
-        if (graph3DRenderer) init3DGraph();
-
-    } catch (err) {
-        recordStatus.textContent = `Error: ${err.message}`;
+        showResult(thought);
+    } catch (e) {
+        console.error("Text thought error:", e);
+        alert("Failed to save note. Please try again.");
     } finally {
-        processing.style.display = 'none';
-        textSubmit.disabled = false;
-        textSubmit.textContent = 'Save';
+        processing.style.display = "none";
     }
 }
 
-if (textSubmit) textSubmit.addEventListener('click', handleTextThoughtSubmit);
-if (textInput) textInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') handleTextThoughtSubmit();
-});
-
-function showThoughtResult(t) {
-    resultSummary.textContent = t.summary || 'Voice Note';
-    resultMoodBadge.textContent = t.mood || 'Reflective';
-    
-    const dateStr = t.created_at ? new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-    const locStr = t.location_name || 'Bay Area';
-    resultTimeLocation.textContent = `${dateStr} · ${locStr}`;
-
-    resultTranscript.textContent = `"${t.transcript || t.summary}"`;
-
-    resultTopics.innerHTML = (t.topics || []).map(topic => 
-        `<span class="topic-pill">${escapeHtml(topic)}</span>`
-    ).join('') || '<span class="topic-pill">General</span>';
-
-    resultInsights.innerHTML = (t.key_insights || []).map(ins => 
-        `<li>${escapeHtml(ins)}</li>`
-    ).join('') || `<li>Captured into your personal notebook.</li>`;
-
-    latestThought.style.display = 'flex';
+if (textThoughtSubmit) {
+    textThoughtSubmit.addEventListener("click", submitTextThought);
+}
+if (textThoughtInput) {
+    textThoughtInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") submitTextThought();
+    });
 }
 
-async function pollConnectorInsights(thoughtId) {
+// ── 6. Show Saved Result Card & Poll Connections ────────────────────
+
+function showResult(t) {
+    latestThought.dataset.currentId = t.id;
+    resultSummary.textContent = t.summary || "Note saved";
+    resultMoodBadge.textContent = t.mood ? t.mood.charAt(0).toUpperCase() + t.mood.slice(1) : "Reflective";
+    
+    const dateStr = formatDate(t.created_at);
+    const locStr = t.location_name || (t.latitude ? t.latitude.toFixed(2) + ", " + t.longitude.toFixed(2) : "Bay Area");
+    resultTimeLocation.textContent = dateStr + " @ " + locStr;
+    
+    resultTranscript.textContent = t.transcript || "";
+
+    resultTopics.innerHTML = "";
+    (t.topics || []).forEach(top => {
+        const span = document.createElement("span");
+        span.className = "tag-chip";
+        span.textContent = top;
+        resultTopics.appendChild(span);
+    });
+
+    resultInsights.innerHTML = "";
+    (t.key_insights || []).forEach(ins => {
+        const li = document.createElement("li");
+        li.textContent = ins;
+        resultInsights.appendChild(li);
+    });
+
+    latestThought.style.display = "block";
+    latestThought.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+    pollConnections(t.id);
+}
+
+async function pollConnections(thoughtId) {
     let attempts = 0;
     const maxAttempts = 15;
     const interval = setInterval(async () => {
         attempts++;
         try {
-            const res = await fetch(`/api/thoughts/${thoughtId}/connections`);
-            const data = await res.json();
-            if (data.status === 'completed' && data.connections) {
-                clearInterval(interval);
-                renderConnectorInsights(data);
+            const res = await fetch("/api/thoughts/" + thoughtId + "/connections");
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.status !== "none" && !data.error) {
+                    clearInterval(interval);
+                    renderConnectorInsights(data);
+                }
             }
-        } catch (err) {
-            console.error("Connection poll error:", err);
+        } catch (e) {
+            console.error("Poll connections error:", e);
         }
         if (attempts >= maxAttempts) clearInterval(interval);
     }, 2000);
 }
 
 function renderConnectorInsights(data) {
-    if (!data.connections || data.connections.length === 0) return;
-    let html = '';
+    if (!data) return;
+    let html = "";
     if (data.proactive_insight) {
-        html += `<p style="margin-bottom:8px">💡 <strong>Observation:</strong> ${escapeHtml(data.proactive_insight)}</p>`;
+        html += "<div class=\"insight-callout\"><strong>Proactive Insight:</strong> " + escapeHtml(data.proactive_insight) + "</div>";
     }
-    html += '<ul class="bullet-list">';
-    data.connections.forEach(c => {
-        html += `<li><strong>${escapeHtml(c.connection_type || 'Relates to')}</strong> (${c.past_thought_date || ''}): ${escapeHtml(c.explanation || c.past_summary || '')}</li>`;
-    });
-    html += '</ul>';
-    connectorContent.innerHTML = html;
-    connectorInsights.style.display = 'block';
-}
-
-// ── 6. Walk Map (Light CartoDB Positron) ────────────────────────────
-
-function initMap() {
-    const mapEl = document.getElementById('thoughtMap');
-    if (!mapEl || typeof L === 'undefined') return;
-
-    leafletMap = L.map('thoughtMap').setView([37.4419, -122.1430], 11);
-
-    // Light CartoDB Positron Basemap
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
-        maxZoom: 19
-    }).addTo(leafletMap);
-
-    loadMapPoints();
-}
-
-async function loadMapPoints() {
-    if (!leafletMap) return;
-    try {
-        const res = await fetch('/api/map/points');
-        const points = await res.json();
-        if (!points || points.length === 0) return;
-
-        mapMarkers.forEach(m => leafletMap.removeLayer(m));
-        mapPolylines.forEach(p => leafletMap.removeLayer(p));
-        mapMarkers = [];
-        mapPolylines = [];
-
-        const latLngs = [];
-        points.forEach(pt => {
-            const lat = pt.latitude;
-            const lng = pt.longitude;
-            latLngs.push([lat, lng]);
-
-            const color = pt.color || '#3b82f6';
-            const customIcon = L.divIcon({
-                className: 'clean-marker',
-                html: `<div class="marker-inner-dot" style="background-color:${color}"></div>`,
-                iconSize: [16, 16],
-                iconAnchor: [8, 8]
-            });
-
-            const marker = L.marker([lat, lng], { icon: customIcon }).addTo(leafletMap);
-            marker.on('click', () => {
-                openThoughtInspector(pt);
-            });
-            mapMarkers.push(marker);
+    const connections = data.connections || [];
+    if (connections.length > 0) {
+        html += "<ul class=\"connections-list\">";
+        connections.forEach(c => {
+            html += "<li><span class=\"conn-tag conn-" + (c.connection_type || "evolves") + "\">" + escapeHtml(c.connection_type || "connects") + "</span> <span class=\"conn-expl\">\"" + escapeHtml(c.past_summary || "") + "\" — " + escapeHtml(c.explanation || "") + "</span></li>";
         });
-
-        if (latLngs.length > 1) {
-            const polyline = L.polyline(latLngs, {
-                color: '#3b82f6',
-                weight: 2.5,
-                opacity: 0.6,
-                dashArray: '4, 6'
-            }).addTo(leafletMap);
-            mapPolylines.push(polyline);
-            leafletMap.fitBounds(polyline.getBounds(), { padding: [40, 40] });
-        } else if (latLngs.length === 1) {
-            leafletMap.setView(latLngs[0], 13);
-        }
-    } catch (err) {
-        console.error("Map load error:", err);
+        html += "</ul>";
+    }
+    if (html) {
+        connectorContent.innerHTML = html;
+        connectorInsights.style.display = "block";
     }
 }
 
-// ── 7. Connections (Clean Light 3D Knowledge Graph) ────────────────
+// ── 7. Deletion Actions ─────────────────────────────────────────────
 
-let graph3DScene = null, graph3DCamera = null, graph3DRenderer = null, graph3DAnimationId = null;
-let graph3DGroup = null, graph3DNodeMeshes = [];
-let isGraphDragging = false, prevMousePos = { x: 0, y: 0 };
+async function deleteThoughtById(id, event) {
+    if (event) event.stopPropagation();
+    if (!confirm("Are you sure you want to delete this thought note?")) {
+        return;
+    }
+    try {
+        const res = await fetch("/api/thoughts/" + id, { method: "DELETE" });
+        if (res.ok) {
+            if (drawer && drawer.style.display !== "none" && drawer.dataset.currentId == id) {
+                drawer.style.display = "none";
+            }
+            if (latestThought && latestThought.dataset.currentId == id) {
+                latestThought.style.display = "none";
+            }
+            loadThoughts();
+            if (document.getElementById("connectionsTab")?.classList.contains("active")) {
+                if (!isMapMode) init3DGraph();
+                else if (leafletMap) loadMapPoints();
+            }
+        } else {
+            alert("Could not delete note. Please try again.");
+        }
+    } catch (e) {
+        console.error("Delete thought error:", e);
+        alert("Network error deleting note.");
+    }
+}
+
+if (deleteLatestThoughtBtn) {
+    deleteLatestThoughtBtn.addEventListener("click", () => {
+        const id = latestThought.dataset.currentId;
+        if (id) deleteThoughtById(id);
+    });
+}
+
+if (drawerDeleteBtn) {
+    drawerDeleteBtn.addEventListener("click", () => {
+        const id = drawer.dataset.currentId;
+        if (id) deleteThoughtById(id);
+    });
+}
+
+// ── 8. Consolidated Connections (3D Graph + Map View) ───────────────
+
+let graph3DScene, graph3DCamera, graph3DRenderer, graph3DGroup;
+let graph3DAnimationId;
+let graph3DNodeMeshes = [];
+let isGraphDragging = false;
+let prevMousePos = { x: 0, y: 0 };
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
 
 async function init3DGraph() {
-    const container = document.getElementById('neural3DGraph');
-    if (!container || typeof THREE === 'undefined') return;
+    const container = document.getElementById("neural3DGraph");
+    if (!container || typeof THREE === "undefined") return;
 
     if (graph3DAnimationId) {
         cancelAnimationFrame(graph3DAnimationId);
@@ -660,10 +676,10 @@ async function init3DGraph() {
         } catch (e) {}
         graph3DRenderer = null;
     }
-    container.innerHTML = '';
+    container.innerHTML = "";
 
-    const width = container.clientWidth || 980;
-    const height = 540;
+    const width = container.clientWidth || 1080;
+    const height = container.clientHeight || 620;
 
     graph3DScene = new THREE.Scene();
     graph3DCamera = new THREE.PerspectiveCamera(45, width / height, 1, 3000);
@@ -674,15 +690,15 @@ async function init3DGraph() {
     graph3DRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(graph3DRenderer.domElement);
 
-    // Studio Lights for clean light-mode rendering
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
+    // Warm, Rich Studio Lighting
+    const ambientLight = new THREE.AmbientLight(0xFBF9F5, 0.65);
     graph3DScene.add(ambientLight);
 
-    const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.0);
+    const dirLight1 = new THREE.DirectionalLight(0xEAE6DC, 0.7);
     dirLight1.position.set(100, 100, 200);
     graph3DScene.add(dirLight1);
 
-    const dirLight2 = new THREE.DirectionalLight(0xe2e8f0, 0.8);
+    const dirLight2 = new THREE.DirectionalLight(0xD8D7D0, 0.35);
     dirLight2.position.set(-100, -100, 150);
     graph3DScene.add(dirLight2);
 
@@ -691,38 +707,35 @@ async function init3DGraph() {
     graph3DNodeMeshes = [];
 
     try {
-        const res = await fetch('/api/graph');
+        const res = await fetch("/api/graph");
         const data = await res.json();
         if (!data || !data.nodes || data.nodes.length === 0) return;
 
-        const nodeMap = new Map();
-
-        // 4 Theme Hub Positions in 3D
         const themePillars = {
-            'theme_tech': new THREE.Vector3(-85, 45, 20),
-            'theme_work': new THREE.Vector3(85, 50, -20),
-            'theme_family': new THREE.Vector3(-75, -55, -30),
-            'theme_health': new THREE.Vector3(75, -50, 30)
+            "theme_tech": new THREE.Vector3(-90, 48, 20),
+            "theme_work": new THREE.Vector3(90, 52, -20),
+            "theme_family": new THREE.Vector3(-80, -58, -30),
+            "theme_health": new THREE.Vector3(80, -52, 30)
         };
 
         data.nodes.forEach(n => {
             let pos;
-            const isTheme = n.group === 'theme';
+            const isTheme = n.group === "theme";
             if (isTheme && themePillars[n.id]) {
                 pos = themePillars[n.id].clone();
             } else {
                 let basePos = new THREE.Vector3(0, 0, 0);
-                const col = (n.color || '').toLowerCase();
-                if (col.includes('8b5cf6') || col.includes('3b82f6')) basePos = themePillars['theme_tech'];
-                else if (col.includes('10b981') || col.includes('6366f1')) basePos = themePillars['theme_work'];
-                else if (col.includes('f59e0b') || col.includes('ec4899')) basePos = themePillars['theme_family'];
-                else basePos = themePillars['theme_health'];
+                const col = (n.color || "").toLowerCase();
+                if (col.includes("1d4e4b")) basePos = themePillars["theme_tech"];
+                else if (col.includes("b3732a") || col.includes("c78844")) basePos = themePillars["theme_work"];
+                else if (col.includes("b8573d") || col.includes("c26d4d")) basePos = themePillars["theme_family"];
+                else basePos = themePillars["theme_health"];
 
                 const u = Math.random();
                 const v = Math.random();
                 const theta = u * 2.0 * Math.PI;
                 const phi = Math.acos(2.0 * v - 1.0);
-                const r = isTheme ? 75 : (30 + Math.random() * 50);
+                const r = isTheme ? 75 : (32 + Math.random() * 52);
 
                 const sinPhi = Math.sin(phi);
                 pos = new THREE.Vector3(
@@ -732,112 +745,73 @@ async function init3DGraph() {
                 );
             }
 
-            const size = isTheme ? 9 : 4.2;
-            let colHex = 0x3b82f6;
+            const size = isTheme ? 9.5 : 4.5;
+            let colHex = 0x1D4E4B;
             if (n.color) {
-                colHex = parseInt(n.color.replace('#', '0x'), 16);
+                colHex = parseInt(n.color.replace("#", "0x"), 16);
             }
 
-            // Clean smooth sphere
             const sphereGeo = new THREE.SphereGeometry(size, 24, 24);
             const sphereMat = new THREE.MeshStandardMaterial({
                 color: colHex,
-                roughness: 0.3,
-                metalness: 0.1
+                roughness: 0.8,
+                metalness: 0.0
             });
             const mesh = new THREE.Mesh(sphereGeo, sphereMat);
             mesh.position.copy(pos);
             mesh.userData = n;
 
-            // Halo ring for theme hubs (as in inspiration node graphic)
             if (isTheme) {
-                const ringGeo = new THREE.RingGeometry(size * 1.3, size * 1.65, 32);
+                const ringGeo = new THREE.RingGeometry(size * 1.3, size * 1.6, 32);
                 const ringMat = new THREE.MeshBasicMaterial({
-                    color: 0xcbd5e1,
-                    side: THREE.DoubleSide
+                    color: 0xD4D3CB,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.8
                 });
                 const ring = new THREE.Mesh(ringGeo, ringMat);
                 ring.rotation.x = Math.PI / 2;
                 mesh.add(ring);
             }
 
-            // Clean 2D Label
-            const labelCanvas = document.createElement('canvas');
-            const lCtx = labelCanvas.getContext('2d');
-            labelCanvas.width = 256;
-            labelCanvas.height = 64;
-            
-            // White badge with subtle shadow
-            lCtx.fillStyle = '#ffffff';
-            lCtx.fillRect(4, 8, 248, 48);
-            lCtx.lineWidth = 2;
-            lCtx.strokeStyle = '#e2e8f0';
-            lCtx.strokeRect(4, 8, 248, 48);
-
-            lCtx.fillStyle = '#0f172a';
-            lCtx.font = isTheme ? 'bold 20px Plus Jakarta Sans, sans-serif' : '16px Plus Jakarta Sans, sans-serif';
-            lCtx.fillText(n.label.slice(0, 20), 16, 38);
-
-            const spriteTex = new THREE.CanvasTexture(labelCanvas);
-            const spriteMat = new THREE.SpriteMaterial({ map: spriteTex, transparent: true });
-            const sprite = new THREE.Sprite(spriteMat);
-            sprite.position.set(0, size + 9, 0);
-            sprite.scale.set(34, 8.5, 1);
-            mesh.add(sprite);
-
             graph3DGroup.add(mesh);
-            nodeMap.set(n.id, mesh);
             graph3DNodeMeshes.push(mesh);
         });
 
-        // Clean grey connecting lines (matching inspiration graph)
-        const lineCoords = [];
-        const rawLinks = data.links || data.edges || [];
-        rawLinks.forEach(l => {
-            const srcId = l.source || l.from;
-            const tgtId = l.target || l.to;
-            const m1 = nodeMap.get(srcId);
-            const m2 = nodeMap.get(tgtId);
-            if (m1 && m2) {
-                lineCoords.push(m1.position.x, m1.position.y, m1.position.z);
-                lineCoords.push(m2.position.x, m2.position.y, m2.position.z);
-            }
-        });
-
-        if (lineCoords.length > 0) {
-            const lineGeo = new THREE.BufferGeometry();
-            lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(lineCoords, 3));
-            const lineMat = new THREE.LineBasicMaterial({
-                color: 0xcbd5e1,
-                transparent: true,
-                opacity: 0.75
+        // Add connecting links
+        if (data.edges && data.edges.length > 0) {
+            const edgePositions = [];
+            const nodeMap = new Map(graph3DNodeMeshes.map(m => [m.userData.id, m.position]));
+            data.edges.forEach(e => {
+                const p1 = nodeMap.get(e.from);
+                const p2 = nodeMap.get(e.to);
+                if (p1 && p2) {
+                    edgePositions.push(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
+                }
             });
-            const lines = new THREE.LineSegments(lineGeo, lineMat);
-            graph3DGroup.add(lines);
+            const edgeGeo = new THREE.BufferGeometry();
+            edgeGeo.setAttribute("position", new THREE.Float32BufferAttribute(edgePositions, 3));
+            const edgeMat = new THREE.LineBasicMaterial({
+                color: 0xD4D3CB,
+                transparent: true,
+                opacity: 0.5
+            });
+            const edgesMesh = new THREE.LineSegments(edgeGeo, edgeMat);
+            graph3DGroup.add(edgesMesh);
         }
 
-    } catch (err) {
-        console.error("3D Graph load error:", err);
+    } catch (e) {
+        console.error("3D graph error:", e);
     }
-
-    // Mouse Controls
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
 
     container.onmousedown = (e) => {
         isGraphDragging = true;
         prevMousePos = { x: e.clientX, y: e.clientY };
     };
 
-    window.onmouseup = () => {
-        isGraphDragging = false;
-    };
+    window.addEventListener("mouseup", () => isGraphDragging = false);
 
     container.onmousemove = (e) => {
-        const rect = container.getBoundingClientRect();
-        mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
-        mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
-
         if (isGraphDragging && graph3DGroup) {
             const dx = e.clientX - prevMousePos.x;
             const dy = e.clientY - prevMousePos.y;
@@ -870,153 +844,356 @@ async function init3DGraph() {
     function animateGraph() {
         graph3DAnimationId = requestAnimationFrame(animateGraph);
         if (!isGraphDragging && graph3DGroup) {
-            graph3DGroup.rotation.y += 0.001;
+            graph3DGroup.rotation.y += 0.0008;
         }
         graph3DRenderer.render(graph3DScene, graph3DCamera);
     }
     animateGraph();
 }
 
-document.getElementById('resetGraphBtn')?.addEventListener('click', () => {
+document.getElementById("resetGraphBtn")?.addEventListener("click", () => {
     if (graph3DGroup && graph3DCamera) {
         graph3DGroup.rotation.set(0, 0, 0);
         graph3DCamera.position.set(0, 0, 320);
     }
 });
 
-// ── 8. Timeline (All Notes) ────────────────────────────────────────
+// Map / Graph Toggle Controller
+const mapGraphToggleBtn = document.getElementById("mapGraphToggleBtn");
+const mapGraphToggleLabel = document.getElementById("mapGraphToggleLabel");
+const connectionsHintText = document.getElementById("connectionsHintText");
+const neural3DGraphEl = document.getElementById("neural3DGraph");
+const thoughtMapEl = document.getElementById("thoughtMap");
 
-async function loadThoughts(searchQuery) {
-    let url = '/api/thoughts';
-    if (searchQuery) {
-        url = `/api/search?q=${encodeURIComponent(searchQuery)}`;
-    }
+if (mapGraphToggleBtn) {
+    mapGraphToggleBtn.addEventListener("click", () => {
+        isMapMode = !isMapMode;
+        if (isMapMode) {
+            if (neural3DGraphEl) neural3DGraphEl.style.display = "none";
+            if (thoughtMapEl) {
+                thoughtMapEl.style.display = "block";
+                if (!leafletMap) {
+                    initMap();
+                } else {
+                    setTimeout(() => {
+                        leafletMap.invalidateSize();
+                        loadMapPoints();
+                    }, 100);
+                }
+            }
+            if (mapGraphToggleLabel) mapGraphToggleLabel.textContent = "Switch to 3D Graph";
+            const iconMap = mapGraphToggleBtn.querySelector(".icon-map");
+            const iconGraph = mapGraphToggleBtn.querySelector(".icon-graph");
+            if (iconMap) iconMap.style.display = "none";
+            if (iconGraph) iconGraph.style.display = "inline";
+            if (connectionsHintText) connectionsHintText.textContent = "Click pins to view thought notes & walk paths";
+        } else {
+            if (thoughtMapEl) thoughtMapEl.style.display = "none";
+            if (neural3DGraphEl) {
+                neural3DGraphEl.style.display = "block";
+                init3DGraph();
+            }
+            if (mapGraphToggleLabel) mapGraphToggleLabel.textContent = "View on Map";
+            const iconMap = mapGraphToggleBtn.querySelector(".icon-map");
+            const iconGraph = mapGraphToggleBtn.querySelector(".icon-graph");
+            if (iconMap) iconMap.style.display = "inline";
+            if (iconGraph) iconGraph.style.display = "none";
+            if (connectionsHintText) connectionsHintText.textContent = "Click & drag to rotate · Scroll to zoom · Click node to inspect";
+        }
+    });
+}
+
+// ── 9. Leaflet Map Initialization ───────────────────────────────────
+
+function initMap() {
+    const mapEl = document.getElementById("thoughtMap");
+    if (!mapEl || typeof L === "undefined") return;
+
+    leafletMap = L.map("thoughtMap", { zoomControl: false }).setView([37.4419, -122.1430], 11);
+    L.control.zoom({ position: "topright" }).addTo(leafletMap);
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+        attribution: "© OpenStreetMap © CARTO",
+        maxZoom: 19
+    }).addTo(leafletMap);
+
+    loadMapPoints();
+}
+
+async function loadMapPoints() {
+    if (!leafletMap) return;
+
+    mapMarkers.forEach(m => leafletMap.removeLayer(m));
+    mapMarkers = [];
+    mapPolylines.forEach(p => leafletMap.removeLayer(p));
+    mapPolylines = [];
 
     try {
-        const res = await fetch(url);
-        const thoughts = await res.json();
+        const res = await fetch("/api/map/points");
+        const points = await res.json();
+        if (!points || points.length === 0) return;
+
+        const bounds = [];
+        const sortedPoints = [...points].sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""));
+
+        // Walk Route Lines
+        const latlngs = sortedPoints.map(p => [p.latitude, p.longitude]);
+        if (latlngs.length > 1) {
+            const polyline = L.polyline(latlngs, {
+                color: "#1D4E4B",
+                weight: 3,
+                opacity: 0.65,
+                dashArray: "6, 8"
+            }).addTo(leafletMap);
+            mapPolylines.push(polyline);
+        }
+
+        // Add Markers
+        sortedPoints.forEach(p => {
+            const color = p.color || "#1D4E4B";
+            const customIcon = L.divIcon({
+                className: "custom-map-pin",
+                html: "<div style=\"background-color: " + color + "; width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid #FFFFFF; box-shadow: 0 2px 6px rgba(0,0,0,0.3);\"></div>",
+                iconSize: [14, 14],
+                iconAnchor: [7, 7]
+            });
+
+            const marker = L.marker([p.latitude, p.longitude], { icon: customIcon }).addTo(leafletMap);
+            bounds.push([p.latitude, p.longitude]);
+
+            const dateStr = formatDate(p.created_at);
+            marker.bindPopup(
+                "<div style=\"font-family: 'General Sans', sans-serif; min-width: 180px; padding: 4px;\">" +
+                    "<div style=\"font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #787B82;\">" + dateStr + " @ " + escapeHtml(p.location_name || "Walk") + "</div>" +
+                    "<div style=\"font-family: 'Newsreader', serif; font-size: 16px; font-weight: 500; margin: 4px 0 6px; color: #14161A;\">" + escapeHtml(p.summary || "") + "</div>" +
+                    "<button onclick=\"openThoughtInspectorById(" + p.id + ")\" style=\"background: #1D4E4B; color: #fff; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-family: 'General Sans', sans-serif;\">View Note Details</button>" +
+                "</div>"
+            );
+
+            mapMarkers.push(marker);
+        });
+
+        if (bounds.length > 0) {
+            leafletMap.fitBounds(bounds, { padding: [40, 40] });
+        }
+
+    } catch (e) {
+        console.error("Map points error:", e);
+    }
+}
+
+// ── 10. Timeline & Pattern Synthesis ────────────────────────────────
+
+async function loadThoughts(searchQuery) {
+    if (!thoughtsList) return;
+    thoughtsList.innerHTML = "<div class=\"empty-state\">Loading notes...</div>";
+
+    try {
+        let thoughts = [];
+        if (searchQuery) {
+            const res = await fetch("/api/search?q=" + encodeURIComponent(searchQuery));
+            thoughts = await res.json();
+        } else {
+            const res = await fetch("/api/thoughts");
+            thoughts = await res.json();
+        }
+
+        const countBadge = document.getElementById("timelineCountBadge");
+        if (countBadge) {
+            countBadge.textContent = thoughts.length + " " + (thoughts.length === 1 ? "note" : "notes");
+        }
 
         if (!thoughts || thoughts.length === 0) {
-            thoughtsList.innerHTML = '<div class="empty-state">No notes found. Record a thought or adjust search filter.</div>';
+            thoughtsList.innerHTML = "<div class=\"empty-state\">No thoughts recorded yet. Record your first thought!</div>";
             return;
         }
 
-        thoughtsList.innerHTML = thoughts.map(t => {
-            const dateStr = t.created_at ? new Date(t.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-            const locStr = t.location_name || 'Bay Area';
-            const topicsHtml = (t.topics || []).slice(0, 3).map(tp => `<span class="topic-pill">${escapeHtml(tp)}</span>`).join('');
+        thoughtsList.innerHTML = "";
+        thoughts.forEach(t => {
+            const card = document.createElement("div");
+            const typeClass = "type-" + (t.thought_type || "reflection").toLowerCase();
+            card.className = "thought-card " + typeClass;
+            card.dataset.id = t.id;
 
-            return `
-                <div class="note-item-card" onclick='openThoughtInspectorById(${t.id})'>
-                    <div class="note-meta-row">
-                        <span>${escapeHtml(dateStr)}</span>
-                        <span>${escapeHtml(locStr)}</span>
-                    </div>
-                    <div class="note-summary">${escapeHtml(t.summary || 'Voice Note')}</div>
-                    <div class="note-snippet">${escapeHtml(t.transcript || t.summary || '')}</div>
-                    <div class="tags-row">${topicsHtml}</div>
-                </div>
-            `;
-        }).join('');
+            const dateStr = formatDate(t.created_at);
+            const locStr = t.location_name || "Bay Area";
 
-    } catch (err) {
-        thoughtsList.innerHTML = `<div class="empty-state">Error loading notes: ${err.message}</div>`;
+            let topicsHtml = "";
+            (t.topics || []).slice(0, 3).forEach(top => {
+                topicsHtml += "<span class=\"tag-chip\">" + escapeHtml(top) + "</span>";
+            });
+
+            card.innerHTML = 
+                "<div class=\"thought-card-top\">" +
+                    "<div class=\"thought-date-loc\">" +
+                        "<span>📅 " + escapeHtml(dateStr) + "</span>" +
+                        "<span>📍 " + escapeHtml(locStr) + "</span>" +
+                    "</div>" +
+                    "<div class=\"thought-card-actions\">" +
+                        "<span class=\"badge badge-light\">" + escapeHtml(t.thought_type || "note") + "</span>" +
+                        "<button class=\"card-trash-btn\" title=\"Delete note\" type=\"button\" aria-label=\"Delete note\">" +
+                            "<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><polyline points=\"3 6 5 6 21 6\"/><path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\"/></svg>" +
+                        "</button>" +
+                    "</div>" +
+                "</div>" +
+                "<div class=\"thought-summary-title\">" + escapeHtml(t.summary || t.transcript || "Recorded Thought") + "</div>" +
+                "<div class=\"thought-card-topics\">" + topicsHtml + "</div>";
+
+            card.addEventListener("click", () => openThoughtInspector(t));
+            const trashBtn = card.querySelector(".card-trash-btn");
+            if (trashBtn) {
+                trashBtn.addEventListener("click", (e) => deleteThoughtById(t.id, e));
+            }
+
+            thoughtsList.appendChild(card);
+        });
+    } catch (e) {
+        console.error("Load thoughts error:", e);
+        thoughtsList.innerHTML = "<div class=\"empty-state\">Error loading notes.</div>";
     }
 }
 
-searchBtn.addEventListener('click', () => loadThoughts(searchInput.value.trim()));
-searchInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') loadThoughts(searchInput.value.trim());
-});
-
-// ── 9. Patterns Tab ────────────────────────────────────────────────
-
-analyzeBtn.addEventListener('click', async () => {
-    analyzeBtn.disabled = true;
-    analyzeBtn.textContent = 'Analyzing...';
-    patternsResult.innerHTML = '<div class="empty-state">Reviewing multi-week recordings and identifying patterns...</div>';
-
-    try {
-        const res = await fetch('/api/patterns');
-        const data = await res.json();
-        renderPatternsDashboard(data);
-    } catch (err) {
-        patternsResult.innerHTML = `<div class="empty-state">Analysis error: ${err.message}</div>`;
-    } finally {
-        analyzeBtn.disabled = false;
-        analyzeBtn.innerHTML = `
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="m13 13 6 6"/></svg>
-            <span>Analyze Notes</span>
-        `;
-    }
-});
-
-function renderPatternsDashboard(data) {
-    if (!data) return;
-    let html = `
-        <div class="pattern-overview-card">
-            <h3>Overview</h3>
-            <p>${escapeHtml(data.one_line_summary || 'Multi-week note synthesis')}</p>
-        </div>
-        <div class="pattern-grid">
-    `;
-
-    if (data.mood_trajectory) {
-        html += `
-            <div class="pattern-block">
-                <h4>Energy & Mood</h4>
-                <p style="font-size:13px;color:var(--text-secondary);line-height:1.5">${escapeHtml(data.mood_trajectory.summary || '')}</p>
-            </div>
-        `;
-    }
-
-    if (data.recurring_themes?.length) {
-        html += `
-            <div class="pattern-block">
-                <h4>Recurring Themes</h4>
-                <ul class="bullet-list">
-                    ${data.recurring_themes.map(t => `<li><strong>${escapeHtml(t.theme)}</strong>: ${escapeHtml(t.description)}</li>`).join('')}
-                </ul>
-            </div>
-        `;
-    }
-
-    if (data.emerging_patterns?.length) {
-        html += `
-            <div class="pattern-block">
-                <h4>Habits & Routines</h4>
-                <ul class="bullet-list">
-                    ${data.emerging_patterns.map(p => `<li><strong>${escapeHtml(p.pattern)}</strong>: ${escapeHtml(p.evidence)}</li>`).join('')}
-                </ul>
-            </div>
-        `;
-    }
-
-    if (data.recommendations?.length) {
-        html += `
-            <div class="pattern-block">
-                <h4>Suggestions</h4>
-                <ul class="bullet-list">
-                    ${data.recommendations.map(r => `<li>${escapeHtml(r)}</li>`).join('')}
-                </ul>
-            </div>
-        `;
-    }
-
-    html += '</div>';
-    patternsResult.innerHTML = html;
+if (searchBtn && searchInput) {
+    searchBtn.addEventListener("click", () => loadThoughts(searchInput.value.trim()));
+    searchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") loadThoughts(searchInput.value.trim());
+    });
 }
 
-// ── 10. Ask / Chat ─────────────────────────────────────────────────
+// Pattern Synthesis Timeframe Handlers
+document.querySelectorAll(".timeframe-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+        document.querySelectorAll(".timeframe-chip").forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        const days = parseInt(chip.dataset.days);
+        const customVal = document.getElementById("patternCustomVal");
+        const customUnit = document.getElementById("patternCustomUnit");
+        if (days === 7 && customVal && customUnit) { customVal.value = 7; customUnit.value = "days"; }
+        else if (days === 35 && customVal && customUnit) { customVal.value = 5; customUnit.value = "weeks"; }
+        else if (days === 90 && customVal && customUnit) { customVal.value = 3; customUnit.value = "months"; }
+        else if (days === 365 && customVal && customUnit) { customVal.value = 1; customUnit.value = "years"; }
+    });
+});
 
-const newChatBtn = document.getElementById('newChatBtn');
+const generatePatternsBtn = document.getElementById("generatePatternsBtn");
+if (generatePatternsBtn) {
+    generatePatternsBtn.addEventListener("click", async () => {
+        const resultContainer = document.getElementById("patternsResult");
+        const loadingEl = resultContainer?.querySelector(".patterns-loading-indicator");
+        const contentArea = document.getElementById("patternsContentArea");
+        if (!resultContainer || !contentArea) return;
+
+        resultContainer.style.display = "block";
+        if (loadingEl) loadingEl.style.display = "flex";
+        contentArea.innerHTML = "";
+
+        let days = 35;
+        let timeframeLabel = "Last 5 Weeks";
+        const activeChip = document.querySelector(".timeframe-chip.active");
+        const customVal = parseInt(document.getElementById("patternCustomVal")?.value || "5");
+        const customUnit = document.getElementById("patternCustomUnit")?.value || "weeks";
+
+        if (activeChip && activeChip.dataset.days !== undefined) {
+            const rawDays = parseInt(activeChip.dataset.days);
+            if (rawDays === 0) {
+                days = null;
+                timeframeLabel = "All Time";
+            } else {
+                days = rawDays;
+                timeframeLabel = activeChip.textContent.trim();
+            }
+        } else {
+            if (customUnit === "days") days = customVal;
+            else if (customUnit === "weeks") days = customVal * 7;
+            else if (customUnit === "months") days = customVal * 30;
+            else if (customUnit === "years") days = customVal * 365;
+            timeframeLabel = "Last " + customVal + " " + customUnit;
+        }
+
+        try {
+            const url = days 
+                ? "/api/patterns?days=" + days + "&timeframe_label=" + encodeURIComponent(timeframeLabel) + "&force=true"
+                : "/api/patterns?timeframe_label=" + encodeURIComponent(timeframeLabel) + "&force=true";
+            const res = await fetch(url);
+            const data = await res.json();
+            if (loadingEl) loadingEl.style.display = "none";
+
+            if (data.error) {
+                contentArea.innerHTML = "<div class=\"empty-state\">" + escapeHtml(data.error) + "</div>";
+                return;
+            }
+
+            renderPatternReport(data, contentArea, timeframeLabel);
+        } catch (e) {
+            console.error("Pattern analysis error:", e);
+            if (loadingEl) loadingEl.style.display = "none";
+            contentArea.innerHTML = "<div class=\"empty-state\">Error analyzing patterns. Please try again.</div>";
+        }
+    });
+}
+
+function renderPatternReport(data, container, label) {
+    const summary = data.one_line_summary || "Multi-week thinking patterns and growth trajectory.";
+    const count = data.analyzed_thought_count || 0;
+    const mood = data.mood_trajectory || {};
+    const themes = data.recurring_themes || [];
+    const recommendations = data.recommendations || [];
+
+    let themesHtml = "";
+    themes.forEach(th => {
+        themesHtml += 
+            "<div class=\"theme-summary-card\">" +
+                "<div class=\"theme-card-top\">" +
+                    "<span class=\"theme-name\">" + escapeHtml(th.theme || th.name || "") + "</span>" +
+                    "<span class=\"theme-trend-badge\">" + escapeHtml(th.trend || (th.frequency ? th.frequency + "x" : "active")) + "</span>" +
+                "</div>" +
+                "<div class=\"theme-desc\">" + escapeHtml(th.description || "") + "</div>" +
+            "</div>";
+    });
+
+    let recsHtml = "";
+    recommendations.forEach(r => {
+        recsHtml += "<li>" + escapeHtml(r) + "</li>";
+    });
+
+    let html = 
+        "<div class=\"pattern-report-view\">" +
+            "<div class=\"pattern-hero-quote\">\"" + escapeHtml(summary) + "\"</div>" +
+            "<div class=\"pattern-meta-banner\">" +
+                "<span><strong>Window:</strong> " + escapeHtml(label || "Selected Timeframe") + "</span>" +
+                "<span><strong>Analyzed Notes:</strong> " + count + "</span>" +
+                "<span><strong>Trajectory:</strong> " + escapeHtml(mood.trend || "evolving") + "</span>" +
+            "</div>";
+
+    if (themesHtml) {
+        html += 
+            "<div>" +
+                "<label class=\"section-label\" style=\"display:block; margin-bottom:10px;\">Recurring Themes & Growth</label>" +
+                "<div class=\"themes-grid-cards\">" + themesHtml + "</div>" +
+            "</div>";
+    }
+
+    if (recommendations.length) {
+        html += 
+            "<div class=\"card\" style=\"padding:20px 24px; background:#FFFFFF;\">" +
+                "<label class=\"section-label\" style=\"display:block; margin-bottom:10px;\">Proactive Recommendations</label>" +
+                "<ul class=\"bullet-list\">" + recsHtml + "</ul>" +
+            "</div>";
+    }
+
+    html += "</div>";
+    container.innerHTML = html;
+}
+
+// ── 11. Elevated Ask Chat Pipeline ──────────────────────────────────
 
 function bindPromptChips() {
-    document.querySelectorAll('.prompt-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-            const text = chip.dataset.prompt;
-            if (text) {
-                sendChatMessage(text);
+    document.querySelectorAll(".prompt-card, .prompt-chip").forEach(chip => {
+        chip.addEventListener("click", () => {
+            const prompt = chip.dataset.prompt;
+            if (prompt && chatInput) {
+                chatInput.value = prompt;
+                handleChatSubmit();
             }
         });
     });
@@ -1025,102 +1202,123 @@ function bindPromptChips() {
 bindPromptChips();
 
 if (newChatBtn) {
-    newChatBtn.addEventListener('click', () => {
-        currentConversationId = 'conv_' + Date.now();
+    newChatBtn.addEventListener("click", () => {
+        currentConversationId = "conv_" + Date.now();
         chatHistory = [];
-        chatMessages.innerHTML = `
-            <div class="chat-bubble assistant">
-                <div class="bubble-avatar">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--petrol)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-                </div>
-                <div class="bubble-body">
-                    <div class="bubble-summary">Hi! Ask me anything about your past notes, walks, or ideas.</div>
-                    <div class="prompt-chips-row">
-                        <button class="prompt-chip" type="button" data-prompt="What have I noted about hydration and health?">Hydration habits</button>
-                        <button class="prompt-chip" type="button" data-prompt="What were my ideas about AI agents and memory?">AI agent ideas</button>
-                        <button class="prompt-chip" type="button" data-prompt="What did I plan for my parents' anniversary?">Parents' anniversary</button>
-                        <button class="prompt-chip" type="button" data-prompt="What notes did I record during my recent walks?">Recent walk notes</button>
-                    </div>
-                </div>
-            </div>
-        `;
+        chatMessages.innerHTML = 
+            "<div class=\"chat-bubble assistant\">" +
+                "<div class=\"bubble-avatar\">" +
+                    "<svg width=\"18\" height=\"18\" viewBox=\"0 0 96 96\" fill=\"none\">" +
+                        "<g stroke=\"var(--petrol)\" stroke-width=\"6\">" +
+                            "<ellipse cx=\"48\" cy=\"80\" rx=\"30\" ry=\"8\"/>" +
+                            "<ellipse cx=\"48\" cy=\"60\" rx=\"23\" ry=\"7.5\"/>" +
+                            "<ellipse cx=\"48\" cy=\"42\" rx=\"16\" ry=\"7\"/>" +
+                        "</g>" +
+                        "<circle cx=\"48\" cy=\"22\" r=\"7\" fill=\"var(--color-amber)\"/>" +
+                    "</svg>" +
+                "</div>" +
+                "<div class=\"bubble-body\">" +
+                    "<div class=\"bubble-summary\">Hi! Ask me anything about your past notes, walks, or ideas. What are you thinking through today?</div>" +
+                    "<div class=\"prompt-grid-chips\">" +
+                        "<button class=\"prompt-card\" type=\"button\" data-prompt=\"What have I noted about hydration and health?\">" +
+                            "<span class=\"prompt-icon\">💧</span>" +
+                            "<span class=\"prompt-title\">Hydration habits</span>" +
+                            "<span class=\"prompt-desc\">Past reflections on drinking water & wellness</span>" +
+                        "</button>" +
+                        "<button class=\"prompt-card\" type=\"button\" data-prompt=\"What were my ideas about AI agents and memory?\">" +
+                            "<span class=\"prompt-icon\">🧠</span>" +
+                            "<span class=\"prompt-title\">AI agent architectures</span>" +
+                            "<span class=\"prompt-desc\">Long-horizon memory & edge intelligence</span>" +
+                        "</button>" +
+                        "<button class=\"prompt-card\" type=\"button\" data-prompt=\"What did I plan for my parents' anniversary?\">" +
+                            "<span class=\"prompt-icon\">👨‍👩‍👧</span>" +
+                            "<span class=\"prompt-title\">Parents' anniversary</span>" +
+                            "<span class=\"prompt-desc\">Itinerary, Carmel reservations & gift ideas</span>" +
+                        "</button>" +
+                        "<button class=\"prompt-card\" type=\"button\" data-prompt=\"What notes did I record during my recent walks?\">" +
+                            "<span class=\"prompt-icon\">🌲</span>" +
+                            "<span class=\"prompt-title\">Recent walk notes</span>" +
+                            "<span class=\"prompt-desc\">Thoughts from Stanford Dish, Shoreline & Cupertino</span>" +
+                        "</button>" +
+                    "</div>" +
+                "</div>" +
+            "</div>";
         bindPromptChips();
-        chatInput.value = '';
+        chatInput.value = "";
         chatInput.focus();
     });
 }
 
-chatSendBtn.addEventListener('click', () => sendChatMessage());
-chatInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) sendChatMessage();
-});
+async function handleChatSubmit() {
+    if (!chatInput) return;
+    const msg = chatInput.value.trim();
+    if (!msg) return;
 
-async function sendChatMessage(customQuery) {
-    const message = (typeof customQuery === 'string' ? customQuery : chatInput.value).trim();
-    if (!message) return;
+    appendChatBubble("user", msg);
+    chatInput.value = "";
 
-    appendChatBubble('user', message);
-    chatInput.value = '';
-    chatSendBtn.disabled = true;
-
-    const typingEl = appendChatBubble('assistant', 'Searching notes...');
+    const assistantBubble = appendChatBubble("assistant", "");
+    const body = assistantBubble.querySelector(".bubble-body");
+    body.innerHTML = 
+        "<div style=\"display:flex; align-items:center; gap:8px; color:var(--text-muted); font-size:14px;\">" +
+            "<div class=\"loading-spinner\" style=\"width:16px; height:16px; border-width:2px;\"></div>" +
+            "<span>Searching your stash and connecting thoughts...</span>" +
+        "</div>";
 
     try {
-        const res = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+        const res = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 conversation_id: currentConversationId,
-                message: message,
+                message: msg,
                 history: chatHistory
             })
         });
+
+        if (!res.ok) throw new Error("Chat request failed");
         const data = await res.json();
+        renderAssistantResponse(body, data);
 
-        renderAssistantResponse(data, typingEl);
+        chatHistory.push({ role: "user", content: msg });
+        chatHistory.push({ role: "model", content: data.response || data.summary || "" });
 
-        chatHistory.push({ role: 'user', content: message });
-        chatHistory.push({ role: 'model', content: data.summary || data.response || '' });
-        if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
-    } catch (err) {
-        typingEl.querySelector('.bubble-body').innerHTML = `<p style="color:var(--color-coral)">Error: ${escapeHtml(err.message)}</p>`;
-    } finally {
-        chatSendBtn.disabled = false;
-        chatInput.focus();
+    } catch (e) {
+        console.error("Chat error:", e);
+        body.innerHTML = "<div style=\"color:var(--color-terracotta);\">Sorry, I encountered an error searching your notes. Please try again.</div>";
     }
 }
 
-function renderAssistantResponse(data, bubbleEl) {
-    const body = bubbleEl.querySelector('.bubble-body');
-    let html = '';
-
+function renderAssistantResponse(body, data) {
+    let html = "";
     if (data.summary) {
-        html += `<div class="bubble-summary">${escapeHtml(data.summary)}</div>`;
+        html += "<div class=\"bubble-summary\">" + escapeHtml(data.summary) + "</div>";
     }
 
     if (data.key_points && data.key_points.length > 0) {
-        html += `<ul class="bubble-bullets">`;
-        data.key_points.forEach(point => {
-            html += `<li>${escapeHtml(point)}</li>`;
+        html += "<ul class=\"bubble-points-list\">";
+        data.key_points.forEach(kp => {
+            html += "<li>" + escapeHtml(kp) + "</li>";
         });
-        html += `</ul>`;
+        html += "</ul>";
     }
 
     if (data.suggested_action) {
-        html += `<div class="bubble-action"><span>💡</span> <div>${escapeHtml(data.suggested_action)}</div></div>`;
+        html += 
+            "<div class=\"suggested-action-box\">" +
+                "<span class=\"action-icon\">💡</span>" +
+                "<span><strong>Takeaway:</strong> " + escapeHtml(data.suggested_action) + "</span>" +
+            "</div>";
     }
 
-    // Source indicator
-    const sources = [];
-    if (data.matched_thought_count > 0) sources.push(`${data.matched_thought_count} note${data.matched_thought_count > 1 ? 's' : ''}`);
-    if (data.web_search_used) sources.push('web search');
-    if (sources.length > 0) {
-        html += `<div class="bubble-source">from ${sources.join(' + ')}</div>`;
-    }
-
-    // Fallback if data was plain string
-    if (!html && data.response) {
-        html = `<p>${escapeHtml(data.response)}</p>`;
+    if (data.context_layer_applied && data.matched_thought_count) {
+        const noteCount = data.matched_thought_count;
+        const noteLabel = noteCount === 1 ? "1 note" : noteCount + " notes";
+        const searchBadge = data.web_search_used ? " + Google Search" : "";
+        html += 
+            "<div class=\"provenance-chip\">" +
+                "<span>✨ Grounded in " + noteLabel + searchBadge + "</span>" +
+            "</div>";
     }
 
     body.innerHTML = html;
@@ -1128,84 +1326,114 @@ function renderAssistantResponse(data, bubbleEl) {
 }
 
 function appendChatBubble(role, text) {
-    const div = document.createElement('div');
-    div.className = `chat-bubble ${role}`;
-    const iconSvg = role === 'user' ? 
-        `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>` :
-        `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--petrol)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`;
+    const div = document.createElement("div");
+    div.className = "chat-bubble " + role;
+    const iconSvg = role === "user" ? 
+        "<svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2\"/><circle cx=\"12\" cy=\"7\" r=\"4\"/></svg>" :
+        "<svg width=\"18\" height=\"18\" viewBox=\"0 0 96 96\" fill=\"none\"><g stroke=\"var(--petrol)\" stroke-width=\"6\"><ellipse cx=\"48\" cy=\"80\" rx=\"30\" ry=\"8\"/><ellipse cx=\"48\" cy=\"60\" rx=\"23\" ry=\"7.5\"/><ellipse cx=\"48\" cy=\"42\" rx=\"16\" ry=\"7\"/></g><circle cx=\"48\" cy=\"22\" r=\"7\" fill=\"var(--color-amber)\"/></svg>";
 
-    const bodyContent = text ? `<p>${escapeHtml(text)}</p>` : '';
-    div.innerHTML = `
-        <div class="bubble-avatar">${iconSvg}</div>
-        <div class="bubble-body">${bodyContent}</div>
-    `;
+    const bodyContent = text ? "<p>" + escapeHtml(text) + "</p>" : "";
+    div.innerHTML = 
+        "<div class=\"bubble-avatar\">" + iconSvg + "</div>" +
+        "<div class=\"bubble-body\">" + bodyContent + "</div>";
     chatMessages.appendChild(div);
     chatMessages.scrollTop = chatMessages.scrollHeight;
     return div;
 }
 
-// ── 11. Slide-In Detail Drawer ─────────────────────────────────────
+if (chatSendBtn) {
+    chatSendBtn.addEventListener("click", handleChatSubmit);
+}
+if (chatInput) {
+    chatInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") handleChatSubmit();
+    });
+}
 
-const drawer = document.getElementById('thoughtInspectorDrawer');
-const closeDrawerBtn = document.getElementById('closeInspectorBtn');
+// ── 12. Slide-In Detail Drawer ──────────────────────────────────────
 
-function openThoughtInspector(data) {
-    if (!data) return;
-    document.getElementById('inspectorCategoryText').textContent = data.mood || 'Note';
-    document.getElementById('inspectorDate').textContent = data.created_at ? new Date(data.created_at).toLocaleDateString() : '';
-    document.getElementById('inspectorLocation').textContent = data.location_name || 'Bay Area';
-    document.getElementById('inspectorTitle').textContent = data.summary || 'Voice Note';
-    document.getElementById('inspectorTranscript').textContent = `"${data.transcript || data.summary || ''}"`;
+function openThoughtInspector(t) {
+    if (!t) return;
+    drawer.dataset.currentId = t.id;
 
-    const topicsEl = document.getElementById('inspectorTopics');
-    topicsEl.innerHTML = (data.topics || []).map(tp => `<span class="topic-pill">${escapeHtml(tp)}</span>`).join('') || '<span class="topic-pill">General</span>';
+    const titleEl = document.getElementById("inspectorTitle");
+    const transcriptEl = document.getElementById("inspectorTranscript");
+    const dateEl = document.getElementById("inspectorDate");
+    const locEl = document.getElementById("inspectorLocation");
+    const topicsEl = document.getElementById("inspectorTopics");
+    const insightsEl = document.getElementById("inspectorInsightsList");
+    const categoryBadgeText = document.getElementById("inspectorCategoryText");
 
-    const insightsEl = document.getElementById('inspectorInsightsList');
-    insightsEl.innerHTML = (data.key_insights || []).map(ins => `<li>${escapeHtml(ins)}</li>`).join('') || '<li>Recorded in your notebook.</li>';
+    if (titleEl) titleEl.textContent = t.summary || "Recorded Thought";
+    if (transcriptEl) transcriptEl.textContent = t.transcript || "No audio transcript available.";
+    if (dateEl) dateEl.textContent = formatDate(t.created_at);
+    if (locEl) locEl.textContent = t.location_name || "Bay Area";
+    if (categoryBadgeText) categoryBadgeText.textContent = t.thought_type || "Thought";
 
-    drawer.style.display = 'flex';
+    if (topicsEl) {
+        topicsEl.innerHTML = "";
+        (t.topics || []).forEach(top => {
+            const span = document.createElement("span");
+            span.className = "tag-chip";
+            span.textContent = top;
+            topicsEl.appendChild(span);
+        });
+    }
+
+    if (insightsEl) {
+        insightsEl.innerHTML = "";
+        const insights = t.key_insights || [];
+        if (insights.length > 0) {
+            insights.forEach(ins => {
+                const li = document.createElement("li");
+                li.textContent = ins;
+                insightsEl.appendChild(li);
+            });
+            document.getElementById("inspectorInsightsSection").style.display = "block";
+        } else {
+            document.getElementById("inspectorInsightsSection").style.display = "none";
+        }
+    }
+
+    drawer.style.display = "flex";
 }
 
 async function openThoughtInspectorById(id) {
     try {
-        const res = await fetch(`/api/thoughts/${id}`);
+        const res = await fetch("/api/thoughts/" + id);
         if (res.ok) {
             const thought = await res.json();
             openThoughtInspector(thought);
         }
     } catch (e) {
-        console.error("Failed to load thought:", e);
+        console.error("Open inspector error:", e);
     }
 }
+
+// Global window function for map popup click
+window.openThoughtInspectorById = openThoughtInspectorById;
 
 if (closeDrawerBtn) {
-    closeDrawerBtn.addEventListener('click', () => {
-        drawer.style.display = 'none';
-    });
+    closeDrawerBtn.addEventListener("click", () => drawer.style.display = "none");
 }
-
 if (drawer) {
-    drawer.addEventListener('click', (e) => {
-        if (e.target === drawer) drawer.style.display = 'none';
+    drawer.addEventListener("click", (e) => {
+        if (e.target === drawer) drawer.style.display = "none";
     });
 }
 
-window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && drawer) {
-        drawer.style.display = 'none';
-    }
-});
+// ── 13. Utilities ───────────────────────────────────────────────────
 
-// Helper
 function escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
+    if (!str) return "";
+    const div = document.createElement("div");
     div.textContent = str;
     return div.innerHTML;
 }
 
-// ── 12. Init ───────────────────────────────────────────────────────
-
-init3DAudioOrb();
-initGeolocation();
-loadThoughts();
+// Initialize on DOM Ready
+window.addEventListener("DOMContentLoaded", () => {
+    initGeolocation();
+    init3DAudioOrb();
+    loadThoughts();
+});

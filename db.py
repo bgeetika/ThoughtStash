@@ -325,8 +325,8 @@ def _parse_row(row) -> dict:
     return thought
 
 
-def get_all_thoughts(status: str | None = "completed") -> list[dict]:
-    """Get all thoughts, newest first."""
+def get_all_thoughts(status: str | None = "completed", days: int | None = None) -> list[dict]:
+    """Get all thoughts, newest first, with optional relative timeframe filtering."""
     conn = get_db()
     if status:
         rows = conn.execute(
@@ -338,12 +338,32 @@ def get_all_thoughts(status: str | None = "completed") -> list[dict]:
             "SELECT * FROM thoughts ORDER BY created_at DESC"
         ).fetchall()
     conn.close()
+
     thoughts = []
     for row in rows:
         t = _parse_row(row)
         t.pop("embedding", None)
         t.pop("raw_response", None)
         thoughts.append(t)
+
+    if days is not None and days > 0 and thoughts:
+        from datetime import datetime, timedelta, timezone
+        try:
+            latest_dt = datetime.fromisoformat(thoughts[0]["created_at"].replace("Z", "+00:00"))
+        except Exception:
+            latest_dt = datetime.now(timezone.utc)
+        cutoff = latest_dt - timedelta(days=days)
+
+        filtered = []
+        for t in thoughts:
+            try:
+                dt = datetime.fromisoformat(t["created_at"].replace("Z", "+00:00"))
+                if dt >= cutoff:
+                    filtered.append(t)
+            except Exception:
+                filtered.append(t)
+        return filtered
+
     return thoughts
 
 
@@ -375,6 +395,39 @@ def get_thought_by_id(thought_id: int) -> dict | None:
         t.pop("raw_response", None)
         return t
     return None
+
+
+def delete_thought(thought_id: int) -> bool:
+    """Delete a thought from the database by ID, removing audio files and theme references."""
+    conn = get_db()
+    row = conn.execute("SELECT id, audio_path FROM thoughts WHERE id = ?", (thought_id,)).fetchone()
+    if not row:
+        conn.close()
+        return False
+
+    audio_path = row["audio_path"]
+    if audio_path and os.path.exists(audio_path):
+        try:
+            os.remove(audio_path)
+        except Exception:
+            pass
+
+    conn.execute("DELETE FROM thoughts WHERE id = ?", (thought_id,))
+
+    theme_rows = conn.execute("SELECT id, associated_thought_ids, frequency FROM themes").fetchall()
+    for tr in theme_rows:
+        t_ids = json.loads(tr["associated_thought_ids"] or "[]")
+        if thought_id in t_ids:
+            t_ids.remove(thought_id)
+            new_freq = max(0, tr["frequency"] - 1)
+            conn.execute(
+                "UPDATE themes SET associated_thought_ids = ?, frequency = ? WHERE id = ?",
+                (json.dumps(t_ids), new_freq, tr["id"]),
+            )
+
+    conn.commit()
+    conn.close()
+    return True
 
 
 def update_thought_connections(thought_id: int, connections_json: str):
