@@ -424,7 +424,7 @@ Thought Stream:
 
 class ChatOutputSchema(BaseModel):
     summary: str = Field(
-        description="A direct, helpful 1-2 sentence response addressing the user's query (max 40 words)."
+        description="A direct, plain-spoken 1-2 sentence response (max 35 words). NEVER use meta-commentary like 'I can help you by combining...', 'Based on your reflections...', or 'By synthesizing your notes...'. Jump straight to the substance."
     )
     key_points: list[str] = Field(
         default_factory=list,
@@ -568,10 +568,11 @@ OPERATING RULES:
    - This is the core value of Thought Stash — connecting past reflections to present decisions.
    - Weave these personal insights naturally into your answer, do not list them as a separate section.
 
-FORMAT:
-- summary: 1-2 clear sentences (max 40 words).
+FORMAT & VOICE:
+- Tone: Plain, quiet, human. No robotic filler or meta-narration.
+- summary: 1-2 direct sentences stating the core answer (max 35 words). NEVER say "I can help you by...", "Combining your creative ideas with your past reflections...", "Based on your notes...", or "Sure!". Jump straight into the substantive answer.
 - key_points: 2-4 concise bullets with specific details. At least one bullet should surface a proactive insight from the context layer if one exists.
-- suggested_action: optional next step.
+- suggested_action: optional concrete next step.
 - No markdown headers, no asterisks, no hashtags.
 
 Recent Conversation:
