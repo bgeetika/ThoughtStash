@@ -224,13 +224,18 @@ function updateLocationBadge() {
     }
 }
 
-// ── 3. 3D Audio Visualizer (Ceramic & Earthy Constellation) ──────────
+// ── 3. 3D Audio Visualizer (Fluid Organic Neural Constellation) ─────
 
 let orbScene, orbCamera, orbRenderer, orbGroup;
 let audioAnalyser, audioDataArray;
 let orbAnimationId;
 let orbNodes = [];
+let orbEdges = [];
 let orbLinesMesh = null;
+let ribbonInnerMesh = null, ribbonOuterMesh = null;
+let pulseParticles = [];
+let smoothedAudioScale = 1.0;
+let smoothedAudioEnergy = 0.0;
 
 function init3DAudioOrb() {
     const container = document.getElementById("threeOrbCanvas");
@@ -254,72 +259,96 @@ function init3DAudioOrb() {
 
     orbScene = new THREE.Scene();
     orbCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    orbCamera.position.set(0, 0, 165);
+    orbCamera.position.set(0, 0, 168);
 
     orbRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     orbRenderer.setSize(width, height);
     orbRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(orbRenderer.domElement);
 
-    // Warm Studio Lighting
-    const ambientLight = new THREE.AmbientLight(0xFAF8F5, 0.9);
+    // Warm Studio Lighting (Balanced to prevent blowing out matte colors)
+    const ambientLight = new THREE.AmbientLight(0xFAF8F5, 0.95);
     orbScene.add(ambientLight);
 
-    const dirLight1 = new THREE.DirectionalLight(0xEAE5D8, 0.8);
+    const dirLight1 = new THREE.DirectionalLight(0xEAE5D8, 0.85);
     dirLight1.position.set(80, 80, 100);
     orbScene.add(dirLight1);
 
-    const dirLight2 = new THREE.DirectionalLight(0xD8D6CE, 0.5);
+    const dirLight2 = new THREE.DirectionalLight(0xD8D6CE, 0.55);
     dirLight2.position.set(-80, -60, 80);
     orbScene.add(dirLight2);
 
     orbGroup = new THREE.Group();
     orbScene.add(orbGroup);
 
-    // Subtle ambient breathing aura ring (soft glowing perimeter behind mic)
-    const auraGeo = new THREE.RingGeometry(64, 65.5, 64);
-    const auraMat = new THREE.MeshBasicMaterial({
+    // Dual soft ambient breathing aura rings (subtle rippling halos behind mic button)
+    const aura1Geo = new THREE.RingGeometry(64, 65.5, 64);
+    const aura1Mat = new THREE.MeshBasicMaterial({
         color: 0x1D4E4B,
         transparent: true,
-        opacity: 0.15,
+        opacity: 0.14,
         side: THREE.DoubleSide
     });
-    const auraMesh = new THREE.Mesh(auraGeo, auraMat);
-    orbGroup.add(auraMesh);
+    const aura1Mesh = new THREE.Mesh(aura1Geo, aura1Mat);
+    orbGroup.add(aura1Mesh);
 
-    // Multi-tier Constellation Network (Earthy Palette: Petrol, Ochre, Terracotta, Sage, Amber)
+    const aura2Geo = new THREE.RingGeometry(72, 73.2, 64);
+    const aura2Mat = new THREE.MeshBasicMaterial({
+        color: 0xB3732A,
+        transparent: true,
+        opacity: 0.08,
+        side: THREE.DoubleSide
+    });
+    const aura2Mesh = new THREE.Mesh(aura2Geo, aura2Mat);
+    orbGroup.add(aura2Mesh);
+
+    // Earthy Matte Palette: Petrol, Ochre, Terracotta, Sage, Warm Amber
     const nodeColors = [0x1D4E4B, 0xB3732A, 0xB8573D, 0x4A6B56, 0xC1912B];
     const nodeMeshes = [];
     orbNodes = [];
+    orbEdges = [];
 
-    // Inner tier (10 nodes, radius ~72-88) - sits just outside the 132px mic button (radius 66px)
-    const innerCount = 10;
+    // Inner Tier (12 nodes, base radius ~76 - 92)
+    const innerCount = 12;
     for (let i = 0; i < innerCount; i++) {
-        const angle = (i / innerCount) * Math.PI * 2 + (Math.sin(i * 1.5) * 0.2);
-        const radius = 74 + (i % 3) * 6;
-        const z = (Math.sin(i * 2.1) * 16) - 5;
-        const size = 2.4 + (i % 2) * 0.8;
+        const baseAngle = (i / innerCount) * Math.PI * 2;
+        const baseRadius = 78 + (i % 3) * 6;
+        const baseZ = (Math.sin(i * 2.2) * 14) - 4;
+        const size = 2.4 + (i % 3) * 0.5;
         const col = nodeColors[i % nodeColors.length];
 
         const nGeo = new THREE.SphereGeometry(size, 20, 20);
         const nMat = new THREE.MeshStandardMaterial({
             color: col,
-            roughness: 0.8,
-            metalness: 0.0
+            roughness: 0.75,
+            metalness: 0.05
         });
         const nMesh = new THREE.Mesh(nGeo, nMat);
-        nMesh.position.set(Math.cos(angle) * radius, Math.sin(angle) * (radius * 0.72), z);
         orbGroup.add(nMesh);
         nodeMeshes.push(nMesh);
-        orbNodes.push({ mesh: nMesh, basePos: nMesh.position.clone(), speed: 0.001 + (i % 3) * 0.0005, phase: i });
+
+        orbNodes.push({
+            mesh: nMesh,
+            tier: 0,
+            baseAngle: baseAngle,
+            orbitSpeed: 0.00045 + (i % 2) * 0.0002, // clockwise
+            baseRadius: baseRadius,
+            aspect: 0.74,
+            waveFreq: 0.8 + (i % 4) * 0.2,
+            waveAmp: 5 + (i % 3) * 2,
+            zFreq: 0.6 + (i % 3) * 0.25,
+            zAmp: 7,
+            baseZ: baseZ,
+            phase: i * 0.9
+        });
     }
 
-    // Outer tier (14 nodes, radius ~110-155) - broad decorative expanse
-    const outerCount = 14;
+    // Outer Tier (16 nodes, base radius ~122 - 168)
+    const outerCount = 16;
     for (let j = 0; j < outerCount; j++) {
-        const angle = (j / outerCount) * Math.PI * 2 + 0.35 + (Math.cos(j * 1.7) * 0.25);
-        const radius = 118 + (j % 4) * 10;
-        const z = (Math.cos(j * 1.9) * 24) - 8;
+        const baseAngle = (j / outerCount) * Math.PI * 2 + 0.25;
+        const baseRadius = 124 + (j % 4) * 11;
+        const baseZ = (Math.cos(j * 1.8) * 20) - 6;
         const size = 2.0 + (j % 3) * 0.6;
         const col = nodeColors[(j + 2) % nodeColors.length];
 
@@ -330,55 +359,103 @@ function init3DAudioOrb() {
             metalness: 0.0
         });
         const nMesh = new THREE.Mesh(nGeo, nMat);
-        nMesh.position.set(Math.cos(angle) * radius, Math.sin(angle) * (radius * 0.68), z);
         orbGroup.add(nMesh);
         nodeMeshes.push(nMesh);
-        orbNodes.push({ mesh: nMesh, basePos: nMesh.position.clone(), speed: 0.0008 + (j % 3) * 0.0004, phase: j + 10 });
+
+        orbNodes.push({
+            mesh: nMesh,
+            tier: 1,
+            baseAngle: baseAngle,
+            orbitSpeed: -(0.00035 + (j % 3) * 0.00015), // counter-clockwise drift
+            baseRadius: baseRadius,
+            aspect: 0.68,
+            waveFreq: 0.7 + (j % 4) * 0.18,
+            waveAmp: 7 + (j % 4) * 2.5,
+            zFreq: 0.5 + (j % 3) * 0.2,
+            zAmp: 10,
+            baseZ: baseZ,
+            phase: (j + 12) * 0.85
+        });
     }
 
-    // Build interconnected network line segments
-    const lineCoords = [];
-    const totalNodes = nodeMeshes.length;
+    const totalNodes = orbNodes.length;
 
-    // Connect inner ring loop
+    // Define Network Graph Topology (Edges)
+    // 1. Inner loop
     for (let i = 0; i < innerCount; i++) {
-        const p1 = nodeMeshes[i].position;
-        const p2 = nodeMeshes[(i + 1) % innerCount].position;
-        lineCoords.push(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
+        orbEdges.push({ u: i, v: (i + 1) % innerCount });
     }
-
-    // Connect outer ring loop
-    for (let j = innerCount; j < totalNodes; j++) {
-        const nextIdx = innerCount + ((j - innerCount + 1) % outerCount);
-        const p1 = nodeMeshes[j].position;
-        const p2 = nodeMeshes[nextIdx].position;
-        lineCoords.push(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
+    // 2. Outer loop
+    for (let j = 0; j < outerCount; j++) {
+        const u = innerCount + j;
+        const v = innerCount + ((j + 1) % outerCount);
+        orbEdges.push({ u, v });
     }
-
-    // Connect radial spokes between inner and outer nodes
+    // 3. Radial spokes connecting inner to outer tier
     for (let i = 0; i < innerCount; i++) {
-        const outerTarget1 = innerCount + Math.floor((i / innerCount) * outerCount);
-        const outerTarget2 = innerCount + ((Math.floor((i / innerCount) * outerCount) + 1) % outerCount);
-        
-        const pi = nodeMeshes[i].position;
-        const po1 = nodeMeshes[outerTarget1].position;
-        lineCoords.push(pi.x, pi.y, pi.z, po1.x, po1.y, po1.z);
-
+        const targetOuter1 = innerCount + Math.floor((i / innerCount) * outerCount);
+        const targetOuter2 = innerCount + ((Math.floor((i / innerCount) * outerCount) + 1) % outerCount);
+        orbEdges.push({ u: i, v: targetOuter1 });
         if (i % 2 === 0) {
-            const po2 = nodeMeshes[outerTarget2].position;
-            lineCoords.push(pi.x, pi.y, pi.z, po2.x, po2.y, po2.z);
+            orbEdges.push({ u: i, v: targetOuter2 });
         }
     }
+    // 4. Subtle inner cross-chords
+    for (let i = 0; i < innerCount; i += 3) {
+        orbEdges.push({ u: i, v: (i + 4) % innerCount });
+    }
 
+    // Allocate Dynamic Real-time Line Buffer
+    const linePositions = new Float32Array(orbEdges.length * 2 * 3);
     const lineGeo = new THREE.BufferGeometry();
-    lineGeo.setAttribute("position", new THREE.Float32BufferAttribute(lineCoords, 3));
+    lineGeo.setAttribute("position", new THREE.BufferAttribute(linePositions, 3));
     const lineMat = new THREE.LineBasicMaterial({
-        color: 0xCBC8BC,
+        color: 0xCDC9BD,
         transparent: true,
-        opacity: 0.65
+        opacity: 0.55
     });
     orbLinesMesh = new THREE.LineSegments(lineGeo, lineMat);
     orbGroup.add(orbLinesMesh);
+
+    // Smooth undulating flowing stream ribbon curves (Catmull-Rom closed splines)
+    const ribbonPtsCount = 64;
+    const innerRibbonGeo = new THREE.BufferGeometry().setFromPoints(new Array(ribbonPtsCount).fill(new THREE.Vector3()));
+    const innerRibbonMat = new THREE.LineBasicMaterial({
+        color: 0x1D4E4B,
+        transparent: true,
+        opacity: 0.16
+    });
+    ribbonInnerMesh = new THREE.LineLoop(innerRibbonGeo, innerRibbonMat);
+    orbGroup.add(ribbonInnerMesh);
+
+    const outerRibbonGeo = new THREE.BufferGeometry().setFromPoints(new Array(ribbonPtsCount).fill(new THREE.Vector3()));
+    const outerRibbonMat = new THREE.LineBasicMaterial({
+        color: 0xB3732A,
+        transparent: true,
+        opacity: 0.12
+    });
+    ribbonOuterMesh = new THREE.LineLoop(outerRibbonGeo, outerRibbonMat);
+    orbGroup.add(ribbonOuterMesh);
+
+    // Floating Stardust Thought Pulses (Traveling along network connections)
+    pulseParticles = [];
+    const pulseCount = 7;
+    const pulseGeo = new THREE.SphereGeometry(1.4, 12, 12);
+    for (let p = 0; p < pulseCount; p++) {
+        const pMat = new THREE.MeshBasicMaterial({
+            color: nodeColors[p % nodeColors.length],
+            transparent: true,
+            opacity: 0.75
+        });
+        const pMesh = new THREE.Mesh(pulseGeo, pMat);
+        orbGroup.add(pMesh);
+        pulseParticles.push({
+            mesh: pMesh,
+            edgeIdx: Math.floor(Math.random() * orbEdges.length),
+            progress: Math.random(),
+            speed: 0.004 + Math.random() * 0.004
+        });
+    }
 
     // Responsive window/tab resize observer
     if (window.ResizeObserver) {
@@ -399,35 +476,117 @@ function init3DAudioOrb() {
     let clock = 0;
     function animateOrb() {
         orbAnimationId = requestAnimationFrame(animateOrb);
-        clock += 0.015;
+        clock += 0.014;
 
-        let audioScale = 1.0;
-        let audioEnergy = 0;
+        // Smoothly interpolate audio energy
+        let targetAudioScale = 1.0;
+        let targetAudioEnergy = 0.0;
         if (audioAnalyser && isRecording && audioDataArray) {
             audioAnalyser.getByteFrequencyData(audioDataArray);
             let sum = 0;
             for (let i = 0; i < audioDataArray.length; i++) sum += audioDataArray[i];
             const avg = sum / audioDataArray.length;
-            audioEnergy = avg / 255.0;
-            audioScale = 1.0 + audioEnergy * 0.28;
+            targetAudioEnergy = avg / 255.0;
+            targetAudioScale = 1.0 + targetAudioEnergy * 0.28;
         }
 
-        // Ambient rotation and subtle float
-        orbGroup.rotation.y += (isRecording ? 0.006 : 0.002);
-        orbGroup.rotation.x = Math.sin(clock * 0.5) * 0.06;
-        orbGroup.rotation.z = Math.cos(clock * 0.4) * 0.03;
+        smoothedAudioScale += (targetAudioScale - smoothedAudioScale) * 0.1;
+        smoothedAudioEnergy += (targetAudioEnergy - smoothedAudioEnergy) * 0.1;
 
-        // Aura pulse
-        const auraScale = 1.0 + Math.sin(clock * 1.5) * 0.03 + (audioEnergy * 0.15);
-        auraMesh.scale.set(auraScale, auraScale, 1);
-        auraMat.opacity = isRecording ? (0.25 + audioEnergy * 0.3) : 0.12;
+        // 1. Update all 28 nodes with organic smooth harmonic flow
+        for (let i = 0; i < totalNodes; i++) {
+            const n = orbNodes[i];
+            const currentAngle = n.baseAngle + (clock * n.orbitSpeed * 10) * (isRecording ? 1.5 : 1.0);
+            const rHarmonic = Math.sin(clock * n.waveFreq + n.phase) * n.waveAmp;
+            const currentR = (n.baseRadius + rHarmonic) * smoothedAudioScale;
 
-        // Group audio scale
-        if (isRecording) {
-            orbGroup.scale.set(audioScale, audioScale, audioScale);
-        } else {
-            orbGroup.scale.set(1.0, 1.0, 1.0);
+            n.mesh.position.x = Math.cos(currentAngle) * currentR;
+            n.mesh.position.y = Math.sin(currentAngle) * (currentR * n.aspect);
+            n.mesh.position.z = n.baseZ + Math.sin(clock * n.zFreq + n.phase * 1.3) * n.zAmp;
         }
+
+        // 2. Real-time dynamic recalculation of connecting lines
+        const posArray = orbLinesMesh.geometry.attributes.position.array;
+        let ptr = 0;
+        for (let e = 0; e < orbEdges.length; e++) {
+            const p1 = orbNodes[orbEdges[e].u].mesh.position;
+            const p2 = orbNodes[orbEdges[e].v].mesh.position;
+            posArray[ptr++] = p1.x;
+            posArray[ptr++] = p1.y;
+            posArray[ptr++] = p1.z;
+            posArray[ptr++] = p2.x;
+            posArray[ptr++] = p2.y;
+            posArray[ptr++] = p2.z;
+        }
+        orbLinesMesh.geometry.attributes.position.needsUpdate = true;
+
+        // 3. Smooth undulating neural stream ribbons
+        const innerCtrlPts = [];
+        const innerCPCount = 8;
+        for (let k = 0; k < innerCPCount; k++) {
+            const a = (k / innerCPCount) * Math.PI * 2 + clock * 0.12;
+            const r = (72 + Math.sin(clock * 1.4 + k * 1.2) * 7.5) * smoothedAudioScale;
+            innerCtrlPts.push(new THREE.Vector3(
+                Math.cos(a) * r,
+                Math.sin(a) * (r * 0.74),
+                Math.cos(clock * 0.8 + k) * 6
+            ));
+        }
+        const innerCurve = new THREE.CatmullRomCurve3(innerCtrlPts, true);
+        const innerSampledPts = innerCurve.getPoints(ribbonPtsCount - 1);
+        ribbonInnerMesh.geometry.setFromPoints(innerSampledPts);
+
+        const outerCtrlPts = [];
+        const outerCPCount = 10;
+        for (let k = 0; k < outerCPCount; k++) {
+            const a = (k / outerCPCount) * Math.PI * 2 - clock * 0.08;
+            const r = (136 + Math.cos(clock * 1.1 + k * 1.4) * 12) * smoothedAudioScale;
+            outerCtrlPts.push(new THREE.Vector3(
+                Math.cos(a) * r,
+                Math.sin(a) * (r * 0.68),
+                Math.sin(clock * 0.7 + k) * 9
+            ));
+        }
+        const outerCurve = new THREE.CatmullRomCurve3(outerCtrlPts, true);
+        const outerSampledPts = outerCurve.getPoints(ribbonPtsCount - 1);
+        ribbonOuterMesh.geometry.setFromPoints(outerSampledPts);
+
+        // 4. Floating stardust signal pulses along active connections
+        for (let p = 0; p < pulseParticles.length; p++) {
+            const particle = pulseParticles[p];
+            particle.progress += particle.speed * (isRecording ? 1.8 : 1.0);
+            if (particle.progress >= 1.0) {
+                particle.progress = 0;
+                // Transition to an edge connected to destination
+                const prevEdge = orbEdges[particle.edgeIdx];
+                const destNode = prevEdge.v;
+                const candidateEdges = orbEdges.filter((ed, idx) => (ed.u === destNode || ed.v === destNode) && idx !== particle.edgeIdx);
+                if (candidateEdges.length > 0) {
+                    const nextEdge = candidateEdges[Math.floor(Math.random() * candidateEdges.length)];
+                    particle.edgeIdx = orbEdges.indexOf(nextEdge);
+                } else {
+                    particle.edgeIdx = Math.floor(Math.random() * orbEdges.length);
+                }
+            }
+
+            const edge = orbEdges[particle.edgeIdx];
+            const p1 = orbNodes[edge.u].mesh.position;
+            const p2 = orbNodes[edge.v].mesh.position;
+            particle.mesh.position.lerpVectors(p1, p2, particle.progress);
+        }
+
+        // 5. Ambient gentle camera/group float
+        orbGroup.rotation.y = Math.sin(clock * 0.3) * 0.05;
+        orbGroup.rotation.x = Math.cos(clock * 0.25) * 0.035;
+
+        // Aura gentle ripples
+        const aura1Scale = 1.0 + Math.sin(clock * 1.6) * 0.025 + (smoothedAudioEnergy * 0.12);
+        aura1Mesh.scale.set(aura1Scale, aura1Scale, 1);
+        aura1Mat.opacity = isRecording ? (0.22 + smoothedAudioEnergy * 0.25) : 0.12;
+
+        const aura2Scale = 1.0 + Math.cos(clock * 1.2) * 0.035 + (smoothedAudioEnergy * 0.18);
+        aura2Mesh.scale.set(aura2Scale, aura2Scale, 1);
+        aura2Mat.opacity = isRecording ? (0.16 + smoothedAudioEnergy * 0.2) : 0.07;
 
         orbRenderer.render(orbScene, orbCamera);
     }
