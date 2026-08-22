@@ -3,199 +3,340 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ThoughtStash — Long-Horizon Voice Thought Agent</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <title>ThoughtStash — Long-Horizon Voice Agent</title>
     
-    <!-- Leaflet CSS & JS for Spatio-Temporal Map -->
+    <!-- Google Fonts: Editorial Serif + Modern Geometric Sans + Technical Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS & JS for Spatio-Temporal Radar Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     
-    <!-- Vis-Network for Neural Knowledge Graph -->
-    <script type="text/javascript" src="https://unpkg.com/vis-network@9.1.9/dist/vis-network.min.js"></script>
+    <!-- Three.js (for 3D Audio Orb) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- 3D Force Graph (Three.js WebGL Knowledge Graph) -->
+    <script src="https://unpkg.com/3d-force-graph@1.73.3/dist/3d-force-graph.min.js"></script>
+    
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <!-- Header -->
-    <header>
-        <div class="logo">
-            <span class="logo-icon">🧠</span>
-            <h1>ThoughtStash</h1>
-        </div>
-        <p class="tagline">Long-Horizon Voice Agent. Capture thoughts on walks — AI discovers connections across time & space.</p>
-    </header>
+    <!-- Cosmic Background Canvas -->
+    <canvas id="cosmicBgCanvas" class="cosmic-bg"></canvas>
 
-    <!-- Agent Status Bar -->
-    <div id="agentStatus" class="agent-bar">
-        <div class="agent-chip" id="scribeStatus">🖊️ Scribe: <span>Ready</span></div>
-        <div class="agent-chip" id="connectorStatus">🔗 Connector: <span>Idle</span></div>
-        <div class="agent-chip" id="oracleStatus">🔮 Oracle: <span>Ready</span></div>
-    </div>
-
-    <!-- Navigation Tabs -->
-    <nav class="tabs">
-        <button class="tab active" data-tab="capture">🎙️ Capture</button>
-        <button class="tab" data-tab="mapTab">🗺️ Mind Trail</button>
-        <button class="tab" data-tab="graphTab">🕸️ Mind Graph</button>
-        <button class="tab" data-tab="thoughts">💭 Timeline</button>
-        <button class="tab" data-tab="patterns">🔗 Patterns</button>
-        <button class="tab" data-tab="chat">💬 Chat</button>
-    </nav>
-
-    <!-- Capture Tab -->
-    <section id="capture" class="tab-content active">
-        <div class="capture-area">
-            <div class="record-container">
-                <button id="recordBtn" class="record-btn">
-                    <span class="mic-icon">🎙️</span>
-                </button>
-                <p id="recordStatus" class="record-status">Tap to start recording</p>
-                <div id="timer" class="timer" style="display:none">00:00</div>
-                <div id="locationBadge" class="location-badge">📍 Detecting location...</div>
-            </div>
-            <div id="waveform" class="waveform"></div>
-        </div>
-
-        <!-- Processing indicator -->
-        <div id="processing" class="processing" style="display:none">
-            <div class="spinner"></div>
-            <p>Processing with Gemini 3.7 Agent Swarm...</p>
-        </div>
-
-        <!-- Latest thought result -->
-        <div id="latestThought" class="thought-result" style="display:none">
-            <h3>✨ Thought Captured</h3>
-            <div class="result-grid">
-                <div class="result-card">
-                    <h4>📝 Transcript</h4>
-                    <p id="resultTranscript"></p>
+    <!-- Top App Shell -->
+    <div class="app-shell">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="brand-container">
+                <div class="brand-logo-mark">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L14.5 8.5L21 11L14.5 13.5L12 20L9.5 13.5L3 11L9.5 8.5L12 2Z" fill="url(#brandGrad)" />
+                        <circle cx="12" cy="11" r="3" fill="#06070a" />
+                        <defs>
+                            <linearGradient id="brandGrad" x1="3" y1="2" x2="21" y2="20" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#00f2fe"/>
+                                <stop offset="1" stop-color="#8a2be2"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
                 </div>
-                <div class="result-card">
-                    <h4>📋 Summary</h4>
-                    <p id="resultSummary"></p>
-                </div>
-                <div class="result-card">
-                    <h4>🏷️ Topics</h4>
-                    <div id="resultTopics" class="tags"></div>
-                </div>
-                <div class="result-card">
-                    <h4>📍 Time & Location</h4>
-                    <p id="resultLocationTime"></p>
-                </div>
-                <div class="result-card">
-                    <h4>😊 Mood</h4>
-                    <p id="resultMood"></p>
-                </div>
-                <div class="result-card full-width">
-                    <h4>💡 Key Insights</h4>
-                    <ul id="resultInsights"></ul>
+                <div class="brand-text">
+                    <h1>ThoughtStash</h1>
+                    <span class="brand-tagline">Long-Horizon Voice Intelligence</span>
                 </div>
             </div>
-        </div>
 
-        <!-- Connector Agent Insights (appears autonomously) -->
-        <div id="connectorInsights" class="connector-panel" style="display:none">
-            <h3>🔗 Connector Agent Found Patterns</h3>
-            <div id="connectorContent" class="connector-content"></div>
-        </div>
-    </section>
-
-    <!-- 🗺️ Mind Trail (Interactive Map Tab) -->
-    <section id="mapTab" class="tab-content">
-        <div class="section-header">
-            <div>
-                <h2>🗺️ Spatio-Temporal Mind Trail</h2>
-                <p style="color:var(--text-muted); font-size:13px; margin-top:4px">Your thought trajectory across the Bay Area. Click pins to trace connected ideas.</p>
+            <!-- Agent Telemetry Bar -->
+            <div class="agent-telemetry-bar">
+                <div class="agent-pill" id="scribeStatus">
+                    <span class="agent-led status-ready"></span>
+                    <span class="agent-name">Scribe</span>
+                    <span class="agent-state">Ready</span>
+                </div>
+                <div class="agent-pill" id="connectorStatus">
+                    <span class="agent-led status-idle"></span>
+                    <span class="agent-name">Connector</span>
+                    <span class="agent-state">Monitoring</span>
+                </div>
+                <div class="agent-pill" id="oracleStatus">
+                    <span class="agent-led status-ready"></span>
+                    <span class="agent-name">Oracle</span>
+                    <span class="agent-state">Grounded</span>
+                </div>
             </div>
-            <div class="map-legend">
-                <span class="legend-pill" style="border-color:#8b5cf6">🤖 Tech</span>
-                <span class="legend-pill" style="border-color:#3b82f6">💼 Work</span>
-                <span class="legend-pill" style="border-color:#ec4899">👨‍👩‍👧 Family</span>
-                <span class="legend-pill" style="border-color:#10b981">🌿 Health</span>
-            </div>
-        </div>
+        </header>
 
-        <div id="mapContainer" class="map-box">
-            <div id="thoughtMap" style="width: 100%; height: 500px; border-radius: var(--radius);"></div>
-        </div>
+        <!-- Floating Glass Command Dock (Navigation) -->
+        <nav class="glass-command-dock">
+            <button class="nav-dock-btn active" data-tab="capture">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                <span>Capture</span>
+            </button>
+            <button class="nav-dock-btn" data-tab="mapTab">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+                <span>Mind Trail</span>
+            </button>
+            <button class="nav-dock-btn" data-tab="graphTab">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
+                <span>3D Neural Space</span>
+            </button>
+            <button class="nav-dock-btn" data-tab="thoughts">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>Timeline</span>
+            </button>
+            <button class="nav-dock-btn" data-tab="patterns">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                <span>Patterns</span>
+            </button>
+            <button class="nav-dock-btn" data-tab="chat">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <span>Oracle</span>
+            </button>
+        </nav>
 
-        <div id="mapThoughtDetail" class="thought-detail-drawer" style="display:none">
-            <div class="drawer-header">
-                <span id="mapDetailCategory" class="tag"></span>
-                <span id="mapDetailDate" style="color:var(--text-muted); font-size:12px"></span>
-            </div>
-            <h3 id="mapDetailTitle" style="margin: 8px 0 4px; font-size:16px;"></h3>
-            <p id="mapDetailTranscript" style="font-size:13px; color:var(--text-muted); line-height:1.5;"></p>
-        </div>
-    </section>
+        <!-- Main Workspace -->
+        <main class="workspace">
+            
+            <!-- 🎙️ 1. CAPTURE TAB (Hero with 3D Audio Orb) -->
+            <section id="capture" class="tab-view active">
+                <div class="hero-capture-stage">
+                    <div class="editorial-headline">
+                        <h2>Speak into the void. <em>Let intelligence connect the rest.</em></h2>
+                        <p class="subtitle">Capturing spontaneous thoughts during walks, commutes, and moments of focus.</p>
+                    </div>
 
-    <!-- 🕸️ Mind Graph (Interactive Neural Graph Tab) -->
-    <section id="graphTab" class="tab-content">
-        <div class="section-header">
-            <div>
-                <h2>🕸️ Neural Thought Graph</h2>
-                <p style="color:var(--text-muted); font-size:13px; margin-top:4px">Multi-week knowledge graph: Durable Themes & Semantic Memory Links.</p>
-            </div>
-            <div class="graph-actions">
-                <button id="resetGraphBtn" class="btn-secondary">Center View</button>
-            </div>
-        </div>
+                    <!-- 3D Audio Orb Visualizer Stage -->
+                    <div class="orb-visualizer-container">
+                        <div id="threeOrbCanvas" class="three-orb-stage"></div>
+                        
+                        <!-- Floating Record Control Overlay -->
+                        <div class="orb-control-overlay">
+                            <button id="recordBtn" class="cosmic-record-btn" aria-label="Toggle Voice Capture">
+                                <div class="pulse-ring"></div>
+                                <div class="btn-inner">
+                                    <svg class="mic-svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                                    <span class="stop-icon"></span>
+                                </div>
+                            </button>
+                            
+                            <div class="recording-telemetry">
+                                <div id="recordStatus" class="telemetry-status">Tap Orb to begin walk session</div>
+                                <div id="timer" class="telemetry-timer" style="display:none">00:00</div>
+                                <div id="locationBadge" class="telemetry-badge">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/><circle cx="12" cy="10" r="3"/></svg>
+                                    <span>Acquiring GPS...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-        <div id="graphContainer" class="graph-box">
-            <div id="neuralGraph" style="width: 100%; height: 540px; border-radius: var(--radius);"></div>
-        </div>
+                    <!-- Processing State Indicator -->
+                    <div id="processing" class="processing-glass-card" style="display:none">
+                        <div class="cosmic-spinner"></div>
+                        <div class="processing-copy">
+                            <h4>Gemini 3.7 Agent Swarm Active</h4>
+                            <p>Scribing acoustic stream, generating 3072-dim embeddings & evaluating long-horizon connections...</p>
+                        </div>
+                    </div>
 
-        <div id="graphNodeDetail" class="thought-detail-drawer" style="display:none">
-            <div class="drawer-header">
-                <span id="graphDetailCategory" class="tag"></span>
-                <span id="graphDetailDate" style="color:var(--text-muted); font-size:12px"></span>
-            </div>
-            <h3 id="graphDetailTitle" style="margin: 8px 0 4px; font-size:16px;"></h3>
-            <p id="graphDetailTranscript" style="font-size:13px; color:var(--text-muted); line-height:1.5;"></p>
-        </div>
-    </section>
+                    <!-- Live Scribe Result Card -->
+                    <div id="latestThought" class="glass-result-card" style="display:none">
+                        <div class="result-card-header">
+                            <div class="result-title-group">
+                                <span class="card-kicker">Episodic Memory Captured</span>
+                                <h3 id="resultSummary"></h3>
+                            </div>
+                            <div class="result-meta-tags">
+                                <span id="resultMoodBadge" class="meta-pill"></span>
+                                <span id="resultTimeLocation" class="meta-pill meta-mono"></span>
+                            </div>
+                        </div>
 
-    <!-- Thoughts Timeline Tab -->
-    <section id="thoughts" class="tab-content">
-        <div class="section-header">
-            <h2>Your Thought Timeline</h2>
-            <div class="search-bar">
-                <input type="text" id="searchInput" placeholder="🔍 Search by topic, idea, or place...">
-                <button id="searchBtn">Search</button>
-            </div>
-        </div>
-        <div id="thoughtsList" class="thoughts-list">
-            <p class="empty-state">Loading thoughts...</p>
-        </div>
-    </section>
+                        <div class="result-body-grid">
+                            <div class="result-block transcript-block">
+                                <span class="block-label">Verbatim Transcript</span>
+                                <p id="resultTranscript"></p>
+                            </div>
+                            <div class="result-block topics-block">
+                                <span class="block-label">Semantic Topics</span>
+                                <div id="resultTopics" class="pill-group"></div>
+                            </div>
+                            <div class="result-block insights-block full-width">
+                                <span class="block-label">Key Deductions & Decisions</span>
+                                <ul id="resultInsights" class="insights-list"></ul>
+                            </div>
+                        </div>
+                    </div>
 
-    <!-- Patterns Tab -->
-    <section id="patterns" class="tab-content">
-        <div class="section-header">
-            <h2>Spatio-Temporal Thought Patterns</h2>
-            <button id="analyzeBtn" class="btn-primary">🔍 Analyze My Thinking</button>
-        </div>
-        <div id="patternsResult" class="patterns-container">
-            <p class="empty-state">Click "Analyze My Thinking" to discover patterns across time and locations.</p>
-        </div>
-    </section>
-
-    <!-- Chat Tab -->
-    <section id="chat" class="tab-content">
-        <div class="chat-container">
-            <div id="chatMessages" class="chat-messages">
-                <div class="chat-msg assistant">
-                    <div class="msg-content">
-                        <p>Hey! I'm ThoughtStash — your personal long-horizon AI agent. I know what you've been thinking about, when, and where across all your walks. Ask me anything, or let's explore connections between your ideas! 🧠📍</p>
+                    <!-- Autonomous Connector Pattern Panel -->
+                    <div id="connectorInsights" class="connector-glass-panel" style="display:none">
+                        <div class="panel-header">
+                            <div class="panel-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00f2fe" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                            </div>
+                            <div>
+                                <h4>Autonomous Connector Synthesis</h4>
+                                <span class="panel-sub">Linked across multi-week episodic memory</span>
+                            </div>
+                        </div>
+                        <div id="connectorContent" class="connector-content-body"></div>
                     </div>
                 </div>
+            </section>
+
+            <!-- 🗺️ 2. MIND TRAIL TAB (Radar Map) -->
+            <section id="mapTab" class="tab-view">
+                <div class="view-header">
+                    <div>
+                        <h2>Spatio-Temporal Mind Trail</h2>
+                        <p class="subtitle">Geographic trajectory of your walking thoughts across Northern California.</p>
+                    </div>
+                    <div class="legend-bar">
+                        <div class="legend-item"><span class="legend-dot dot-tech"></span> Technology</div>
+                        <div class="legend-item"><span class="legend-dot dot-work"></span> Leadership</div>
+                        <div class="legend-item"><span class="legend-dot dot-family"></span> Family</div>
+                        <div class="legend-item"><span class="legend-dot dot-health"></span> Wellness</div>
+                    </div>
+                </div>
+
+                <div class="map-viewport-glass">
+                    <div id="thoughtMap" class="leaflet-map-canvas"></div>
+                </div>
+            </section>
+
+            <!-- 🕸️ 3. 3D NEURAL SPACE TAB (Three.js WebGL Graph) -->
+            <section id="graphTab" class="tab-view">
+                <div class="view-header">
+                    <div>
+                        <h2>3D Neural Knowledge Space</h2>
+                        <p class="subtitle">Living multi-week constellation: Durable Themes, Semantic Links & Evolving Perspectives.</p>
+                    </div>
+                    <div class="graph-toolbar">
+                        <button id="resetGraphBtn" class="glass-action-btn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                            <span>Center Camera</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="graph-viewport-glass">
+                    <div id="neural3DGraph" class="force-graph-canvas"></div>
+                    <div class="graph-instructions-badge">
+                        <span>Left Click: Rotate · Right Click: Pan · Scroll: Zoom · Click Node: Inspect</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 💭 4. TIMELINE TAB -->
+            <section id="thoughts" class="tab-view">
+                <div class="view-header">
+                    <div>
+                        <h2>Thought Chronology</h2>
+                        <p class="subtitle">Episodic stream with full semantic vector indexing.</p>
+                    </div>
+                    <div class="glass-search-box">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                        <input type="text" id="searchInput" placeholder="Search ideas, locations, or topics...">
+                        <button id="searchBtn" class="search-submit-btn">Filter</button>
+                    </div>
+                </div>
+
+                <div id="thoughtsList" class="timeline-grid">
+                    <div class="empty-state-glass">Loading thought archive...</div>
+                </div>
+            </section>
+
+            <!-- 🔗 5. PATTERNS TAB -->
+            <section id="patterns" class="tab-view">
+                <div class="view-header">
+                    <div>
+                        <h2>Long-Horizon Pattern Synthesis</h2>
+                        <p class="subtitle">Hierarchical multi-agent extraction of recurring themes, mood curves, and cognitive shifts.</p>
+                    </div>
+                    <button id="analyzeBtn" class="glass-primary-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                        <span>Run Full Synthesis</span>
+                    </button>
+                </div>
+
+                <div id="patternsResult" class="patterns-dashboard-glass">
+                    <div class="empty-state-glass">Click "Run Full Synthesis" to extract high-order patterns across your multi-week walk history.</div>
+                </div>
+            </section>
+
+            <!-- 💬 6. ORACLE CHAT TAB -->
+            <section id="chat" class="tab-view">
+                <div class="chat-layout-glass">
+                    <div class="chat-header-bar">
+                        <div class="chat-title-info">
+                            <h3>Oracle Thinking Partner</h3>
+                            <span class="chat-status-sub">Grounded across 17+ episodic memories & durable themes</span>
+                        </div>
+                    </div>
+
+                    <div id="chatMessages" class="chat-dialog-stream">
+                        <div class="chat-bubble assistant">
+                            <div class="bubble-avatar">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00f2fe" stroke-width="2"><path d="M12 2L14.5 8.5L21 11L14.5 13.5L12 20L9.5 13.5L3 11L9.5 8.5L12 2Z"/></svg>
+                            </div>
+                            <div class="bubble-content">
+                                <p>I am your ThoughtStash Oracle. I hold the complete chronological map of your thoughts from your walks across the Bay Area. Ask me about your ideas, decisions, or how your thinking on a subject has evolved.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chat-composer-bar">
+                        <input type="text" id="chatInput" placeholder="What were my ideas about AI agents and memory on my walks?" autocomplete="off">
+                        <button id="chatSendBtn" class="chat-send-action">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Universal Slide-In Thought Inspector Drawer (accessible from Map, 3D Graph & Timeline) -->
+    <div id="thoughtInspectorDrawer" class="thought-inspector-backdrop" style="display:none">
+        <div class="inspector-panel-glass">
+            <div class="inspector-header">
+                <div class="inspector-category-badge" id="inspectorCategoryBadge">
+                    <span class="category-indicator"></span>
+                    <span id="inspectorCategoryText">Technology</span>
+                </div>
+                <button id="closeInspectorBtn" class="close-drawer-btn" aria-label="Close Inspector">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+                </button>
             </div>
-            <div class="chat-input-area">
-                <input type="text" id="chatInput" placeholder="What was I thinking about on my walk yesterday?">
-                <button id="chatSendBtn">Send</button>
+
+            <div class="inspector-scroll-body">
+                <div class="inspector-meta-row">
+                    <span id="inspectorDate" class="mono-tag"></span>
+                    <span id="inspectorLocation" class="mono-tag loc-tag"></span>
+                </div>
+
+                <h2 id="inspectorTitle" class="inspector-title"></h2>
+
+                <div class="inspector-section">
+                    <label class="section-kicker">Transcript</label>
+                    <blockquote id="inspectorTranscript" class="inspector-quote"></blockquote>
+                </div>
+
+                <div class="inspector-section">
+                    <label class="section-kicker">Topics & Entities</label>
+                    <div id="inspectorTopics" class="pill-group"></div>
+                </div>
+
+                <div class="inspector-section" id="inspectorInsightsSection">
+                    <label class="section-kicker">Key Insights</label>
+                    <ul id="inspectorInsightsList" class="insights-list"></ul>
+                </div>
             </div>
         </div>
-    </section>
+    </div>
 
     <script src="/static/app.js"></script>
 </body>

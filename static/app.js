@@ -1,9 +1,14 @@
 /**
- * ThoughtStash — Frontend logic
- * Voice recording, Offline IndexedDB Queue, Spatio-Temporal Map (Leaflet), Neural Graph (vis.js), Agent Polling, UI
+ * ThoughtStash — Cosmic Editorial Application
+ * Features:
+ * - 3D Audio Orb (Three.js WebGL with Live Audio Frequency Reactivity)
+ * - 3D Neural Knowledge Space (ForceGraph3D WebGL)
+ * - Spatio-Temporal Radar Map (Leaflet + Neon Radar Pulse)
+ * - Offline IndexedDB Queue
+ * - Glassmorphic Inspector Drawer & Navigation
  */
 
-// ── State ──────────────────────────────────────────────────────────
+// ── Global State ───────────────────────────────────────────────────
 
 let mediaRecorder = null;
 let audioChunks = [];
@@ -13,13 +18,21 @@ let seconds = 0;
 let chatHistory = [];
 let currentGeo = { latitude: null, longitude: null, locationName: null };
 
+// 3D Audio Orb state
+let orbScene, orbCamera, orbRenderer, orbMesh, orbWireframe, orbLight1, orbLight2;
+let audioContext, audioAnalyser, audioDataArray;
+let orbAnimationId = null;
+
+// 3D Force Graph state
+let forceGraph3DInstance = null;
+let graphRawData = { nodes: [], edges: [] };
+
+// Map state
 let leafletMap = null;
 let mapMarkers = [];
 let mapPolylines = [];
-let neuralNetwork = null;
-let graphData = { nodes: [], edges: [] };
 
-// ── DOM refs ───────────────────────────────────────────────────────
+// ── DOM References ─────────────────────────────────────────────────
 
 const recordBtn = document.getElementById('recordBtn');
 const recordStatus = document.getElementById('recordStatus');
@@ -36,13 +49,161 @@ const chatMessages = document.getElementById('chatMessages');
 const chatInput = document.getElementById('chatInput');
 const chatSendBtn = document.getElementById('chatSendBtn');
 
-const scribeChip = document.getElementById('scribeStatus');
-const connectorChip = document.getElementById('connectorStatus');
-const oracleChip = document.getElementById('oracleStatus');
+const scribePill = document.getElementById('scribeStatus');
+const connectorPill = document.getElementById('connectorStatus');
+const oraclePill = document.getElementById('oracleStatus');
 const connectorInsights = document.getElementById('connectorInsights');
 const connectorContent = document.getElementById('connectorContent');
 
-// ── Offline IndexedDB Queue ────────────────────────────────────────
+const thoughtInspectorDrawer = document.getElementById('thoughtInspectorDrawer');
+const closeInspectorBtn = document.getElementById('closeInspectorBtn');
+
+// ── 1. Cosmic Background Particle Canvas ───────────────────────────
+
+function initCosmicBackground() {
+    const canvas = document.getElementById('cosmicBgCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+
+    window.addEventListener('resize', () => {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    });
+
+    const stars = Array.from({ length: 90 }, () => ({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        radius: Math.random() * 1.2 + 0.3,
+        alpha: Math.random() * 0.7 + 0.2,
+        speed: Math.random() * 0.008 + 0.002
+    }));
+
+    function draw() {
+        ctx.clearRect(0, 0, width, height);
+        stars.forEach(s => {
+            s.alpha += s.speed;
+            const currentAlpha = Math.abs(Math.sin(s.alpha));
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(180, 210, 255, ${currentAlpha * 0.6})`;
+            ctx.shadowBlur = 4;
+            ctx.shadowColor = '#00f2fe';
+            ctx.fill();
+        });
+        requestAnimationFrame(draw);
+    }
+    draw();
+}
+
+// ── 2. Three.js 3D Audio Visualizer Orb ────────────────────────────
+
+function init3DAudioOrb() {
+    const container = document.getElementById('threeOrbCanvas');
+    if (!container || typeof THREE === 'undefined') return;
+
+    const width = container.clientWidth || 580;
+    const height = container.clientHeight || 360;
+
+    orbScene = new THREE.Scene();
+    orbCamera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+    orbCamera.position.z = 4.8;
+
+    orbRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    orbRenderer.setSize(width, height);
+    orbRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.innerHTML = '';
+    container.appendChild(orbRenderer.domElement);
+
+    // Inner Luminous Core
+    const geometry = new THREE.IcosahedronGeometry(1.35, 4);
+    const material = new THREE.MeshStandardMaterial({
+        color: 0x0a1224,
+        emissive: 0x112244,
+        roughness: 0.2,
+        metalness: 0.8,
+        wireframe: false
+    });
+    orbMesh = new THREE.Mesh(geometry, material);
+    orbScene.add(orbMesh);
+
+    // Outer Neon Wireframe Hologram
+    const wireGeo = new THREE.IcosahedronGeometry(1.42, 2);
+    const wireMat = new THREE.MeshBasicMaterial({
+        color: 0x00f2fe,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.35
+    });
+    orbWireframe = new THREE.Mesh(wireGeo, wireMat);
+    orbScene.add(orbWireframe);
+
+    // Dynamic Lights
+    orbLight1 = new THREE.PointLight(0x00f2fe, 3, 50);
+    orbLight1.position.set(3, 3, 4);
+    orbScene.add(orbLight1);
+
+    orbLight2 = new THREE.PointLight(0x8a2be2, 3, 50);
+    orbLight2.position.set(-3, -3, 3);
+    orbScene.add(orbLight2);
+
+    const ambientLight = new THREE.AmbientLight(0x223355, 1.2);
+    orbScene.add(ambientLight);
+
+    let clock = new THREE.Clock();
+
+    function animate() {
+        orbAnimationId = requestAnimationFrame(animate);
+        const elapsed = clock.getElapsedTime();
+
+        // Idle floating rotation
+        orbMesh.rotation.y = elapsed * 0.25;
+        orbMesh.rotation.x = elapsed * 0.15;
+        orbWireframe.rotation.y = -elapsed * 0.3;
+        orbWireframe.rotation.x = -elapsed * 0.18;
+
+        // Audio reactivity if recording
+        let audioFactor = 0;
+        if (isRecording && audioAnalyser && audioDataArray) {
+            audioAnalyser.getByteFrequencyData(audioDataArray);
+            let sum = 0;
+            for (let i = 0; i < audioDataArray.length; i++) {
+                sum += audioDataArray[i];
+            }
+            audioFactor = (sum / audioDataArray.length) / 128.0; // 0 to ~1.5
+        }
+
+        const scale = 1.0 + (isRecording ? Math.min(audioFactor * 0.35, 0.45) : Math.sin(elapsed * 1.5) * 0.03);
+        orbMesh.scale.set(scale, scale, scale);
+        orbWireframe.scale.set(scale * 1.05, scale * 1.05, scale * 1.05);
+
+        if (isRecording) {
+            wireMat.color.setHex(0xff007f);
+            orbLight1.color.setHex(0xff007f);
+            wireMat.opacity = 0.6 + (audioFactor * 0.3);
+        } else {
+            wireMat.color.setHex(0x00f2fe);
+            orbLight1.color.setHex(0x00f2fe);
+            wireMat.opacity = 0.35;
+        }
+
+        orbRenderer.render(orbScene, orbCamera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+        if (!container || !orbRenderer || !orbCamera) return;
+        const newW = container.clientWidth;
+        const newH = container.clientHeight;
+        orbCamera.aspect = newW / newH;
+        orbCamera.updateProjectionMatrix();
+        orbRenderer.setSize(newW, newH);
+    });
+}
+
+// ── 3. Offline IndexedDB Queue ─────────────────────────────────────
 
 let idb = null;
 const DB_NAME = 'ThoughtStashOfflineDB';
@@ -66,14 +227,8 @@ async function saveOfflineRecording(blob, mimeType, geo, timestamp) {
     if (!idb) return;
     const tx = idb.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
-    store.add({
-        blob,
-        mimeType,
-        geo,
-        timestamp,
-        addedAt: Date.now()
-    });
-    recordStatus.innerHTML = '<span style="color:var(--warning)">📶 Offline: Recording saved to device. Will sync when back online.</span>';
+    store.add({ blob, mimeType, geo, timestamp, addedAt: Date.now() });
+    recordStatus.innerHTML = '<span style="color:var(--neon-amber)">📶 Offline: Recording stored on device.</span>';
 }
 
 async function syncOfflineQueue() {
@@ -85,8 +240,6 @@ async function syncOfflineQueue() {
     getAllReq.onsuccess = async () => {
         const items = getAllReq.result;
         if (!items || items.length === 0) return;
-
-        console.log(`📶 Syncing ${items.length} offline recording(s)...`);
         for (const item of items) {
             try {
                 currentGeo = item.geo || currentGeo;
@@ -94,26 +247,25 @@ async function syncOfflineQueue() {
                 const delTx = idb.transaction(STORE_NAME, 'readwrite');
                 delTx.objectStore(STORE_NAME).delete(item.id);
             } catch (err) {
-                console.error("Failed to sync offline item:", err);
+                console.error("Offline sync error:", err);
             }
         }
     };
 }
 
-window.addEventListener('online', () => {
-    console.log("🌐 Connection restored, draining offline queue...");
-    syncOfflineQueue();
-});
+window.addEventListener('online', () => syncOfflineQueue());
 
-// ── Tab Navigation ─────────────────────────────────────────────────
+// ── 4. Navigation & Tab Switching ──────────────────────────────────
 
-document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        tab.classList.add('active');
-        const targetId = tab.dataset.tab;
-        document.getElementById(targetId).classList.add('active');
+document.querySelectorAll('.nav-dock-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.nav-dock-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
+        
+        btn.classList.add('active');
+        const targetId = btn.dataset.tab;
+        const targetView = document.getElementById(targetId);
+        if (targetView) targetView.classList.add('active');
 
         if (targetId === 'thoughts') loadThoughts();
         if (targetId === 'mapTab') {
@@ -121,13 +273,12 @@ document.querySelectorAll('.tab').forEach(tab => {
             else setTimeout(() => leafletMap.invalidateSize(), 150);
         }
         if (targetId === 'graphTab') {
-            if (!neuralNetwork) initGraph();
-            else setTimeout(() => neuralNetwork.fit(), 150);
+            if (!forceGraph3DInstance) init3DGraph();
         }
     });
 });
 
-// ── Geolocation Detection ──────────────────────────────────────────
+// ── 5. Geolocation ─────────────────────────────────────────────────
 
 function initGeolocation() {
     if ("geolocation" in navigator) {
@@ -136,40 +287,30 @@ function initGeolocation() {
                 currentGeo.latitude = pos.coords.latitude;
                 currentGeo.longitude = pos.coords.longitude;
                 if (locationBadge) {
-                    locationBadge.innerHTML = `📍 GPS Active (${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)})`;
-                    locationBadge.classList.add('active');
+                    locationBadge.querySelector('span').textContent = `${pos.coords.latitude.toFixed(3)}° N, ${pos.coords.longitude.toFixed(3)}° W`;
+                    locationBadge.style.borderColor = 'rgba(0, 242, 254, 0.3)';
+                    locationBadge.style.color = 'var(--neon-cyan)';
                 }
             },
-            (err) => {
-                if (locationBadge) locationBadge.innerHTML = `📍 Walk Mode (Local Time)`;
+            () => {
+                if (locationBadge) locationBadge.querySelector('span').textContent = 'Walk Mode (Bay Area)';
             },
             { enableHighAccuracy: true, timeout: 8000 }
         );
-    } else {
-        if (locationBadge) locationBadge.innerHTML = `📍 Walk Mode`;
     }
 }
 
-// ── Cross-Browser MIME & Audio Support ─────────────────────────────
+// ── 6. Audio Recording & Web Audio API Visualizer ──────────────────
 
 function getSupportedMimeType() {
-    const candidates = [
-        'audio/webm;codecs=opus',
-        'audio/webm',
-        'audio/mp4',
-        'audio/aac',
-        'audio/ogg;codecs=opus',
-        'audio/wav'
-    ];
+    const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/aac', 'audio/wav'];
     for (const type of candidates) {
-        if (window.MediaRecorder && typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported(type)) {
+        if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(type)) {
             return type;
         }
     }
     return '';
 }
-
-// ── Voice Recording ────────────────────────────────────────────────
 
 recordBtn.addEventListener('click', async () => {
     if (!isRecording) {
@@ -182,22 +323,27 @@ recordBtn.addEventListener('click', async () => {
 
 async function startRecording() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        const isChrome = navigator.userAgent.includes('Chrome');
-        let helpText = '⚠️ Microphone requires HTTPS or localhost.';
-        if (isChrome && window.location.hostname !== 'localhost') {
-            helpText += ' In Chrome, enable chrome://flags/#unsafely-treat-insecure-origin-as-secure for this URL, or use localhost.';
-        }
-        recordStatus.innerHTML = `<span style="color:var(--warning);font-size:12px">${helpText}</span>`;
-        alert(helpText);
+        alert('Microphone access requires HTTPS or localhost.');
         return;
     }
 
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const selectedMime = getSupportedMimeType();
-        const options = selectedMime ? { mimeType: selectedMime } : {};
         
-        mediaRecorder = new MediaRecorder(stream, options);
+        // Connect Web Audio API to 3D Orb visualizer
+        try {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioContext.createMediaStreamSource(stream);
+            audioAnalyser = audioContext.createAnalyser();
+            audioAnalyser.fftSize = 64;
+            source.connect(audioAnalyser);
+            audioDataArray = new Uint8Array(audioAnalyser.frequencyBinCount);
+        } catch (e) {
+            console.warn("AudioContext visualizer init skipped:", e);
+        }
+
+        const selectedMime = getSupportedMimeType();
+        mediaRecorder = new MediaRecorder(stream, selectedMime ? { mimeType: selectedMime } : {});
         audioChunks = [];
         const actualMime = mediaRecorder.mimeType || selectedMime || 'audio/webm';
 
@@ -207,8 +353,10 @@ async function startRecording() {
 
         mediaRecorder.onstop = async () => {
             stream.getTracks().forEach(t => t.stop());
+            if (audioContext && audioContext.state !== 'closed') {
+                audioContext.close();
+            }
             const blob = new Blob(audioChunks, { type: actualMime });
-            
             if (!navigator.onLine) {
                 await saveOfflineRecording(blob, actualMime, currentGeo, new Date().toISOString());
             } else {
@@ -219,14 +367,13 @@ async function startRecording() {
         mediaRecorder.start(250);
         isRecording = true;
         recordBtn.classList.add('recording');
-        recordStatus.textContent = 'Recording walk thought... tap to stop';
+        recordStatus.textContent = 'Listening to walk thought... tap to finish';
         timerEl.style.display = 'block';
         seconds = 0;
         updateTimer();
         timerInterval = setInterval(() => { seconds++; updateTimer(); }, 1000);
     } catch (err) {
-        recordStatus.textContent = `⚠️ Microphone access failed: ${err.message}`;
-        console.error('Mic error:', err);
+        recordStatus.textContent = `Microphone error: ${err.message}`;
     }
 }
 
@@ -236,7 +383,7 @@ function stopRecording() {
     }
     isRecording = false;
     recordBtn.classList.remove('recording');
-    recordStatus.textContent = 'Scribe processing...';
+    recordStatus.textContent = 'Scribing & linking thought...';
     clearInterval(timerInterval);
 }
 
@@ -246,22 +393,26 @@ function updateTimer() {
     timerEl.textContent = `${m}:${s}`;
 }
 
-// ── Agent Status Helpers ───────────────────────────────────────────
+// ── 7. Agent Status Telemetry ──────────────────────────────────────
 
-function setAgentState(chip, state, label) {
-    if (!chip) return;
-    chip.className = 'agent-chip ' + state;
-    chip.querySelector('span').textContent = label;
+function setAgentState(pillEl, stateClass, labelText) {
+    if (!pillEl) return;
+    const led = pillEl.querySelector('.agent-led');
+    const state = pillEl.querySelector('.agent-state');
+    if (led) led.className = `agent-led status-${stateClass}`;
+    if (state) state.textContent = labelText;
+    if (stateClass === 'working') pillEl.classList.add('active-pulse');
+    else pillEl.classList.remove('active-pulse');
 }
 
-// ── Upload & Process (Agentic Pipeline) ────────────────────────────
+// ── 8. Upload & Scribe Pipeline ────────────────────────────────────
 
 async function uploadThought(blob, mimeType, customTimestamp) {
     latestThought.style.display = 'none';
     connectorInsights.style.display = 'none';
-    processing.style.display = 'block';
+    processing.style.display = 'flex';
 
-    setAgentState(scribeChip, 'working', 'Transcribing...');
+    setAgentState(scribePill, 'working', 'Transcribing...');
 
     const ext = (mimeType && mimeType.includes('mp4')) ? 'mp4' :
                 (mimeType && mimeType.includes('ogg')) ? 'ogg' :
@@ -269,47 +420,39 @@ async function uploadThought(blob, mimeType, customTimestamp) {
 
     const formData = new FormData();
     formData.append('audio', blob, `thought.${ext}`);
-    
     const localTimestamp = customTimestamp || new Date().toISOString();
     formData.append('client_timestamp', localTimestamp);
-    if (currentGeo.latitude !== null) {
-        formData.append('latitude', currentGeo.latitude);
-    }
-    if (currentGeo.longitude !== null) {
-        formData.append('longitude', currentGeo.longitude);
-    }
-    if (currentGeo.locationName) {
-        formData.append('location_name', currentGeo.locationName);
-    }
+    if (currentGeo.latitude !== null) formData.append('latitude', currentGeo.latitude);
+    if (currentGeo.longitude !== null) formData.append('longitude', currentGeo.longitude);
+    if (currentGeo.locationName) formData.append('location_name', currentGeo.locationName);
 
     try {
         const res = await fetch('/api/thoughts', { method: 'POST', body: formData });
         if (!res.ok) {
             const err = await res.json();
-            throw new Error(err.detail || 'Upload failed');
+            throw new Error(err.detail || 'Processing failed');
         }
         const thought = await res.json();
 
-        setAgentState(scribeChip, 'active', 'Done ✓');
+        setAgentState(scribePill, 'ready', 'Captured ✓');
         showThoughtResult(thought);
 
-        setAgentState(connectorChip, 'working', 'Connecting...');
+        setAgentState(connectorPill, 'working', 'Synthesizing...');
         pollConnectorInsights(thought.id);
 
-        // Refresh Map & Graph if initialized
         if (leafletMap) loadMapPoints();
-        if (neuralNetwork) loadNeuralGraph();
+        if (forceGraph3DInstance) load3DGraphData();
 
     } catch (err) {
         if (!navigator.onLine) {
             await saveOfflineRecording(blob, mimeType, currentGeo, localTimestamp);
         } else {
-            recordStatus.textContent = `❌ Error: ${err.message}`;
-            setAgentState(scribeChip, 'active', 'Error');
+            recordStatus.textContent = `Error: ${err.message}`;
+            setAgentState(scribePill, 'idle', 'Error');
         }
     } finally {
         processing.style.display = 'none';
-        recordStatus.textContent = 'Tap to start recording';
+        recordStatus.textContent = 'Tap Orb to begin walk session';
         timerEl.style.display = 'none';
     }
 }
@@ -322,12 +465,12 @@ async function pollConnectorInsights(thoughtId) {
             const data = await res.json();
             if (data.status === 'pending') continue;
 
-            setAgentState(connectorChip, 'active', 'Done ✓');
+            setAgentState(connectorPill, 'ready', 'Linked ✓');
             showConnectorInsights(data);
             return;
-        } catch { /* keep polling */ }
+        } catch { /* poll */ }
     }
-    setAgentState(connectorChip, 'active', 'Done');
+    setAgentState(connectorPill, 'idle', 'Monitoring');
 }
 
 function escapeHtml(text) {
@@ -337,58 +480,22 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-function showConnectorInsights(data) {
-    let html = '';
-
-    if (data.proactive_insight) {
-        html += `<div class="proactive-insight">💡 ${escapeHtml(data.proactive_insight)}</div>`;
-    }
-
-    if (data.spatio_temporal_insights) {
-        html += `<div class="connection-item">📍 <strong>Spatio-Temporal Pattern:</strong> ${escapeHtml(data.spatio_temporal_insights)}</div>`;
-    }
-
-    if (data.connections?.length) {
-        html += '<h4 style="margin-top:12px; font-size:13px; color:var(--text-muted)">Connections across time & place:</h4>';
-        data.connections.forEach(c => {
-            const icon = c.connection_type === 'contradicts' ? '⚡' :
-                         c.connection_type === 'evolves' ? '📈' : '🔗';
-            const locInfo = c.past_location ? ` @ ${escapeHtml(c.past_location)}` : '';
-            html += `<div class="connection-item">${icon} <strong>${escapeHtml(c.connection_type)}</strong> (${escapeHtml(c.past_thought_date)}${locInfo}): ${escapeHtml(c.explanation)}</div>`;
-        });
-    }
-
-    if (data.thinking_evolution) {
-        html += `<p style="margin-top:10px; color:var(--text-muted)">📈 ${escapeHtml(data.thinking_evolution)}</p>`;
-    }
-
-    if (html) {
-        connectorContent.innerHTML = html;
-        connectorInsights.style.display = 'block';
-    }
-}
-
 function showThoughtResult(thought) {
     document.getElementById('resultTranscript').textContent = thought.transcript || '—';
     document.getElementById('resultSummary').textContent = thought.summary || '—';
-    document.getElementById('resultMood').textContent = thought.mood || '—';
+    document.getElementById('resultMoodBadge').textContent = thought.mood ? `Mood: ${thought.mood}` : 'Reflective';
 
     const dateObj = new Date(thought.created_at);
-    const dateFormatted = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    const dateFormatted = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     const timeFormatted = dateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-    
-    let locationStr = thought.location_name || '';
-    if (!locationStr && thought.latitude != null) {
-        locationStr = `GPS: ${Number(thought.latitude).toFixed(4)}, ${Number(thought.longitude).toFixed(4)}`;
-    }
-    const fullLocTime = `🕒 ${escapeHtml(dateFormatted)} at ${escapeHtml(timeFormatted)}` + (locationStr ? `<br>📍 ${escapeHtml(locationStr)}` : '');
-    document.getElementById('resultLocationTime').innerHTML = fullLocTime;
+    const loc = thought.location_name || (thought.latitude ? `${Number(thought.latitude).toFixed(3)}°, ${Number(thought.longitude).toFixed(3)}°` : 'Bay Area');
+    document.getElementById('resultTimeLocation').textContent = `${dateFormatted} · ${timeFormatted} · ${loc}`;
 
     const topicsEl = document.getElementById('resultTopics');
     topicsEl.innerHTML = '';
     (thought.topics || []).forEach(t => {
         const span = document.createElement('span');
-        span.className = 'tag';
+        span.className = 'tech-tag';
         span.textContent = t;
         topicsEl.appendChild(span);
     });
@@ -404,18 +511,35 @@ function showThoughtResult(thought) {
     latestThought.style.display = 'block';
 }
 
-// ── 🗺️ Spatio-Temporal Mind Trail (Leaflet Map) ────────────────────
+function showConnectorInsights(data) {
+    let html = '';
+    if (data.proactive_insight) {
+        html += `<div class="proactive-banner">✦ <strong>Proactive Deduction:</strong> ${escapeHtml(data.proactive_insight)}</div>`;
+    }
+    if (data.connections?.length) {
+        data.connections.forEach(c => {
+            html += `<div class="connection-card">
+                <strong>${escapeHtml(c.connection_type.toUpperCase())}</strong> (${escapeHtml(c.past_thought_date)} @ ${escapeHtml(c.past_location || 'Bay Area')}): 
+                ${escapeHtml(c.explanation)}
+            </div>`;
+        });
+    }
+    if (html) {
+        connectorContent.innerHTML = html;
+        connectorInsights.style.display = 'block';
+    }
+}
+
+// ── 9. Spatio-Temporal Radar Map (Leaflet) ─────────────────────────
 
 function initMap() {
     if (leafletMap || typeof L === 'undefined') return;
 
-    // Center on Bay Area (Mountain View / Palo Alto centroid)
     leafletMap = L.map('thoughtMap', {
         zoomControl: true,
         attributionControl: false
     }).setView([37.52, -122.22], 10);
 
-    // CartoDB Dark Matter tiles (beautiful dark theme)
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         maxZoom: 19,
         subdomains: 'abcd'
@@ -431,7 +555,6 @@ async function loadMapPoints() {
         const res = await fetch('/api/map/points');
         const points = await res.json();
 
-        // Clear existing markers and polylines
         mapMarkers.forEach(m => leafletMap.removeLayer(m));
         mapPolylines.forEach(p => leafletMap.removeLayer(p));
         mapMarkers = [];
@@ -442,148 +565,101 @@ async function loadMapPoints() {
         const latLngs = [];
         points.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
-        points.forEach((pt, index) => {
+        points.forEach(pt => {
             const lat = pt.latitude;
             const lng = pt.longitude;
             latLngs.push([lat, lng]);
 
+            const color = pt.color || '#00f2fe';
             const customIcon = L.divIcon({
-                className: 'custom-div-icon',
-                html: `<div class="custom-map-marker" style="background:${pt.color}">${pt.icon || '📍'}</div>`,
-                iconSize: [32, 32],
-                iconAnchor: [16, 16]
+                className: 'radar-div-icon',
+                html: `
+                    <div class="radar-marker-pin" style="color:${color}">
+                        <div class="radar-marker-pulse"></div>
+                        <div class="radar-marker-core" style="background:${color}"></div>
+                    </div>
+                `,
+                iconSize: [22, 22],
+                iconAnchor: [11, 11]
             });
 
-            const dateStr = new Date(pt.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
             const marker = L.marker([lat, lng], { icon: customIcon }).addTo(leafletMap);
-
-            marker.bindPopup(`
-                <div style="min-width:200px">
-                    <span style="background:${pt.color};color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">${escapeHtml(pt.category)}</span>
-                    <span style="color:#94a3b8;font-size:11px;float:right">${escapeHtml(dateStr)}</span>
-                    <h4 style="margin:8px 0 4px;font-size:14px;color:#f8fafc">${escapeHtml(pt.location_name)}</h4>
-                    <p style="margin:0 0 6px;color:#cbd5e1;font-size:12px">${escapeHtml(pt.summary)}</p>
-                    <small style="color:#a78bfa;font-style:italic">"${escapeHtml(pt.transcript.slice(0, 90))}..."</small>
-                </div>
-            `);
-
             marker.on('click', () => {
-                showMapThoughtDetail(pt);
+                openThoughtInspector(pt);
             });
-
             mapMarkers.push(marker);
         });
 
-        // Draw animated polyline connecting the chronological walk trajectory
         if (latLngs.length > 1) {
-            const trail = L.polyline(latLngs, {
-                color: '#7c5cfc',
-                weight: 3,
-                opacity: 0.6,
-                dashArray: '6, 10'
+            const polyline = L.polyline(latLngs, {
+                color: '#00f2fe',
+                weight: 2,
+                opacity: 0.7,
+                dashArray: '5, 8'
             }).addTo(leafletMap);
-            mapPolylines.push(trail);
-
-            // Fit bounds to show all Bay Area points
-            leafletMap.fitBounds(trail.getBounds(), { padding: [40, 40] });
+            mapPolylines.push(polyline);
+            leafletMap.fitBounds(polyline.getBounds(), { padding: [40, 40] });
         }
     } catch (err) {
         console.error("Map load error:", err);
     }
 }
 
-function showMapThoughtDetail(pt) {
-    const drawer = document.getElementById('mapThoughtDetail');
-    document.getElementById('mapDetailCategory').textContent = `${pt.icon || '📍'} ${pt.category}`;
-    document.getElementById('mapDetailCategory').style.background = pt.color;
-    
-    const dateObj = new Date(pt.created_at);
-    const dateStr = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-    document.getElementById('mapDetailDate').textContent = `📅 ${dateStr} @ ${pt.location_name}`;
-    document.getElementById('mapDetailTitle').textContent = pt.summary;
-    document.getElementById('mapDetailTranscript').textContent = `"${pt.transcript}"`;
-    drawer.style.display = 'block';
-}
+// ── 10. 3D Neural Knowledge Space (3D Force Graph WebGL) ────────────
 
-// ── 🕸️ Neural Thought Graph (vis-network.js) ───────────────────────
+function init3DGraph() {
+    const container = document.getElementById('neural3DGraph');
+    if (!container || typeof ForceGraph3D === 'undefined') return;
 
-async function initGraph() {
-    if (typeof vis === 'undefined') return;
+    forceGraph3DInstance = ForceGraph3D()(container)
+        .backgroundColor('rgba(0,0,0,0)')
+        .showNavInfo(false)
+        .nodeLabel(node => `<div style="font-family:Plus Jakarta Sans,sans-serif;padding:6px 10px;background:rgba(13,17,26,0.9);border:1px solid #00f2fe;border-radius:8px;color:#fff;font-size:12px"><strong>${escapeHtml(node.label)}</strong></div>`)
+        .nodeColor(node => node.color || '#00f2fe')
+        .nodeVal(node => node.size || 14)
+        .nodeResolution(16)
+        .linkColor(() => 'rgba(0, 242, 254, 0.25)')
+        .linkWidth(link => link.width || 1)
+        .linkDirectionalParticles(2)
+        .linkDirectionalParticleWidth(1.8)
+        .linkDirectionalParticleColor(() => '#00f2fe')
+        .onNodeClick(node => {
+            // Fly camera to node
+            const distance = 40;
+            const distRatio = 1 + distance / Math.hypot(node.x, node.y, node.z);
+            forceGraph3DInstance.cameraPosition(
+                { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio },
+                node,
+                1200
+            );
 
-    const container = document.getElementById('neuralGraph');
-    loadNeuralGraph();
+            if (node.full_data) {
+                openThoughtInspector(node.full_data);
+            }
+        });
+
+    load3DGraphData();
 
     document.getElementById('resetGraphBtn')?.addEventListener('click', () => {
-        if (neuralNetwork) neuralNetwork.fit({ animation: { duration: 600, easingFunction: 'easeInOutQuad' } });
+        if (forceGraph3DInstance) {
+            forceGraph3DInstance.cameraPosition({ x: 0, y: 0, z: 250 }, { x: 0, y: 0, z: 0 }, 1000);
+        }
     });
 }
 
-async function loadNeuralGraph() {
-    const container = document.getElementById('neuralGraph');
-    if (!container || typeof vis === 'undefined') return;
-
+async function load3DGraphData() {
+    if (!forceGraph3DInstance) return;
     try {
         const res = await fetch('/api/graph');
         const data = await res.json();
-
-        const nodes = new vis.DataSet(data.nodes);
-        const edges = new vis.DataSet(data.edges);
-
-        const options = {
-            nodes: {
-                shape: 'dot',
-                borderWidth: 2,
-                shadow: true
-            },
-            edges: {
-                smooth: { type: 'continuous' }
-            },
-            physics: {
-                barnesHut: {
-                    gravitationalConstant: -3500,
-                    centralGravity: 0.25,
-                    springLength: 95,
-                    springConstant: 0.04
-                },
-                stabilization: { iterations: 120 }
-            },
-            interaction: {
-                hover: true,
-                tooltipDelay: 100,
-                zoomView: true
-            }
-        };
-
-        neuralNetwork = new vis.Network(container, { nodes, edges }, options);
-
-        neuralNetwork.on('click', (params) => {
-            if (params.nodes.length > 0) {
-                const nodeId = params.nodes[0];
-                const node = data.nodes.find(n => n.id === nodeId);
-                if (node && node.full_data) {
-                    showGraphNodeDetail(node.full_data, node.color);
-                }
-            }
-        });
+        graphRawData = data;
+        forceGraph3DInstance.graphData(data);
     } catch (err) {
         console.error("Graph load error:", err);
     }
 }
 
-function showGraphNodeDetail(data, color) {
-    const drawer = document.getElementById('graphNodeDetail');
-    document.getElementById('graphDetailCategory').textContent = (data.topics && data.topics[0]) ? `🏷️ ${data.topics[0]}` : 'Thought';
-    document.getElementById('graphDetailCategory').style.background = color || 'var(--accent)';
-    
-    const dateObj = new Date(data.created_at);
-    const dateStr = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-    document.getElementById('graphDetailDate').textContent = `📅 ${dateStr} @ ${data.location_name}`;
-    document.getElementById('graphDetailTitle').textContent = data.summary;
-    document.getElementById('graphDetailTranscript').textContent = `"${data.transcript}"`;
-    drawer.style.display = 'block';
-}
-
-// ── Thoughts Timeline ──────────────────────────────────────────────
+// ── 11. Timeline View ──────────────────────────────────────────────
 
 async function loadThoughts(searchQuery) {
     let url = '/api/thoughts';
@@ -594,138 +670,180 @@ async function loadThoughts(searchQuery) {
         const thoughts = await res.json();
         renderThoughts(thoughts, !!searchQuery);
     } catch (err) {
-        thoughtsList.innerHTML = '<p class="empty-state">Failed to load thoughts</p>';
+        thoughtsList.innerHTML = '<div class="empty-state-glass">Failed to load thoughts.</div>';
     }
 }
 
 function renderThoughts(thoughts, isSearch) {
     if (!thoughts.length) {
-        thoughtsList.innerHTML = `<p class="empty-state">${
-            isSearch ? 'No matching thoughts found' : 'No thoughts yet. Go for a walk and capture some! 🎙️'
-        }</p>`;
+        thoughtsList.innerHTML = `<div class="empty-state-glass">${
+            isSearch ? 'No matching thoughts found.' : 'No thoughts archived yet. Tap the orb and start speaking!'
+        }</div>`;
         return;
     }
 
     thoughtsList.innerHTML = '';
     thoughts.forEach(t => {
         const card = document.createElement('div');
-        card.className = 'thought-card';
+        card.className = 'timeline-thought-card';
 
         const dateObj = new Date(t.created_at);
-        const dateStr = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-        const relevance = t.relevance !== undefined ? ` · relevance: ${(t.relevance * 100).toFixed(0)}%` : '';
-
-        let locBadge = '';
-        if (t.location_name) {
-            locBadge = `<span class="tag" style="background:#3b82f6;font-size:11px">📍 ${escapeHtml(t.location_name)}</span>`;
-        } else if (t.latitude != null) {
-            locBadge = `<span class="tag" style="background:#3b82f6;font-size:11px">📍 ${Number(t.latitude).toFixed(3)}, ${Number(t.longitude).toFixed(3)}</span>`;
-        }
-
-        const typeBadge = t.thought_type ? `<span class="tag" style="background:rgba(255,255,255,0.1);font-size:11px">${escapeHtml(t.thought_type)}</span>` : '';
+        const dateStr = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const loc = t.location_name || (t.latitude ? `${Number(t.latitude).toFixed(3)}°, ${Number(t.longitude).toFixed(3)}°` : 'Bay Area');
 
         card.innerHTML = `
-            <div class="meta">
-                <span class="date">📅 ${escapeHtml(dateStr)}${escapeHtml(relevance)}</span>
-                <span class="mood-badge">${escapeHtml(t.mood || '—')}</span>
+            <div class="card-top-meta">
+                <span>${escapeHtml(dateStr)}</span>
+                <span style="color:var(--neon-cyan)">📍 ${escapeHtml(loc)}</span>
             </div>
-            <div class="summary">${escapeHtml(t.summary || '—')}</div>
-            <div class="transcript">${escapeHtml(t.transcript || '')}</div>
-            <div class="card-footer">
-                ${typeBadge}
-                ${locBadge}
-                ${(t.topics || []).map(tp => `<span class="tag">${escapeHtml(tp)}</span>`).join('')}
+            <h4 class="card-summary-heading">${escapeHtml(t.summary || 'Episodic Memory')}</h4>
+            <p class="card-transcript-snippet">"${escapeHtml(t.transcript || '')}"</p>
+            <div class="pill-group" style="margin-top:auto">
+                ${(t.topics || []).slice(0, 3).map(tp => `<span class="tech-tag">${escapeHtml(tp)}</span>`).join('')}
             </div>
         `;
+
+        card.addEventListener('click', () => openThoughtInspector(t));
         thoughtsList.appendChild(card);
     });
 }
 
 searchBtn.addEventListener('click', () => {
     const q = searchInput.value.trim();
-    if (q) loadThoughts(q);
-    else loadThoughts();
+    loadThoughts(q);
 });
 searchInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') searchBtn.click();
 });
 
-// ── Pattern Analysis ───────────────────────────────────────────────
+// ── 12. Universal Slide-In Thought Inspector ───────────────────────
+
+function openThoughtInspector(t) {
+    if (!thoughtInspectorDrawer) return;
+
+    const dateObj = new Date(t.created_at);
+    const dateStr = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const loc = t.location_name || (t.latitude ? `${Number(t.latitude).toFixed(4)}°, ${Number(t.longitude).toFixed(4)}°` : 'Bay Area');
+
+    document.getElementById('inspectorCategoryText').textContent = (t.category || (t.topics && t.topics[0]) || 'Thought');
+    document.getElementById('inspectorDate').textContent = dateStr;
+    document.getElementById('inspectorLocation').textContent = `📍 ${loc}`;
+    document.getElementById('inspectorTitle').textContent = t.summary || 'Thought Reflection';
+    document.getElementById('inspectorTranscript').textContent = `"${t.transcript || ''}"`;
+
+    const topicsContainer = document.getElementById('inspectorTopics');
+    topicsContainer.innerHTML = '';
+    (t.topics || []).forEach(top => {
+        const span = document.createElement('span');
+        span.className = 'tech-tag';
+        span.textContent = top;
+        topicsContainer.appendChild(span);
+    });
+
+    const insightsList = document.getElementById('inspectorInsightsList');
+    const insightsSec = document.getElementById('inspectorInsightsSection');
+    insightsList.innerHTML = '';
+    if (t.key_insights && t.key_insights.length) {
+        insightsSec.style.display = 'block';
+        t.key_insights.forEach(ins => {
+            const li = document.createElement('li');
+            li.textContent = ins;
+            insightsList.appendChild(li);
+        });
+    } else {
+        insightsSec.style.display = 'none';
+    }
+
+    thoughtInspectorDrawer.style.display = 'flex';
+}
+
+closeInspectorBtn?.addEventListener('click', () => {
+    thoughtInspectorDrawer.style.display = 'none';
+});
+
+thoughtInspectorDrawer?.addEventListener('click', (e) => {
+    if (e.target === thoughtInspectorDrawer) {
+        thoughtInspectorDrawer.style.display = 'none';
+    }
+});
+
+// ── 13. Pattern Synthesis ──────────────────────────────────────────
 
 analyzeBtn.addEventListener('click', async () => {
     analyzeBtn.disabled = true;
-    analyzeBtn.textContent = '⏳ Analyzing...';
-    patternsResult.innerHTML = '<div class="processing"><div class="spinner"></div><p>Synthesizing multi-week thought patterns with Gemini 3.7 Agent Swarm...</p></div>';
+    analyzeBtn.innerHTML = `<span>Synthesizing...</span>`;
+    patternsResult.innerHTML = '<div class="empty-state-glass">Synthesizing long-horizon patterns with Gemini 3.7 Agent Swarm...</div>';
 
     try {
         const res = await fetch('/api/patterns');
         const data = await res.json();
-
         if (data.error) {
-            patternsResult.innerHTML = `<p class="empty-state">${escapeHtml(data.error)}. You have ${data.thought_count} thought(s).</p>`;
+            patternsResult.innerHTML = `<div class="empty-state-glass">${escapeHtml(data.error)}.</div>`;
             return;
         }
-
         renderPatterns(data);
     } catch (err) {
-        patternsResult.innerHTML = `<p class="empty-state">❌ Analysis failed: ${escapeHtml(err.message)}</p>`;
+        patternsResult.innerHTML = `<div class="empty-state-glass">Synthesis error: ${escapeHtml(err.message)}</div>`;
     } finally {
         analyzeBtn.disabled = false;
-        analyzeBtn.textContent = '🔍 Analyze My Thinking';
+        analyzeBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+            <span>Run Full Synthesis</span>
+        `;
     }
 });
 
 function renderPatterns(data) {
     let html = '';
-
     if (data.one_line_summary) {
-        html += `<div class="one-line-summary">🧠 ${escapeHtml(data.one_line_summary)}</div>`;
+        html += `<div class="one-line-synthesis">"${escapeHtml(data.one_line_summary)}"</div>`;
     }
+
+    html += '<div class="pattern-grid">';
 
     if (data.mood_trajectory) {
         html += `
-        <div class="pattern-section">
-            <h3>😊 Mood Trajectory — ${escapeHtml(data.mood_trajectory.trend)}</h3>
-            <p style="font-size:14px; line-height:1.6">${escapeHtml(data.mood_trajectory.summary)}</p>
+        <div class="pattern-box">
+            <h4>Emotional Trajectory (${escapeHtml(data.mood_trajectory.trend)})</h4>
+            <p style="font-size:13px; color:var(--text-secondary); line-height:1.5">${escapeHtml(data.mood_trajectory.summary)}</p>
         </div>`;
     }
 
     if (data.recurring_themes?.length) {
-        html += `<div class="pattern-section"><h3>🔄 Durable Recurring Themes</h3>`;
-        data.recurring_themes.forEach(t => {
-            html += `<div class="pattern-item"><strong>${escapeHtml(t.theme)}</strong> (×${t.frequency}) — ${escapeHtml(t.description)}</div>`;
-        });
-        html += '</div>';
+        html += `
+        <div class="pattern-box">
+            <h4>Durable Recurring Themes</h4>
+            <ul class="insights-list">
+                ${data.recurring_themes.map(t => `<li><strong>${escapeHtml(t.theme)}</strong> (${t.frequency}x): ${escapeHtml(t.description)}</li>`).join('')}
+            </ul>
+        </div>`;
     }
 
     if (data.emerging_patterns?.length) {
-        html += `<div class="pattern-section"><h3>📈 Emerging Behavioral Patterns</h3>`;
-        data.emerging_patterns.forEach(p => {
-            html += `<div class="pattern-item"><strong>${escapeHtml(p.pattern)}</strong> — ${escapeHtml(p.evidence)}</div>`;
-        });
-        html += '</div>';
-    }
-
-    if (data.connections?.length) {
-        html += `<div class="pattern-section"><h3>🔗 Cross-Temporal Connections</h3>`;
-        data.connections.forEach(c => {
-            html += `<div class="pattern-item">"${escapeHtml(c.thought_a)}" ↔ "${escapeHtml(c.thought_b)}" — <em>${escapeHtml(c.connection)}</em></div>`;
-        });
-        html += '</div>';
+        html += `
+        <div class="pattern-box">
+            <h4>Emerging Behavioral Patterns</h4>
+            <ul class="insights-list">
+                ${data.emerging_patterns.map(p => `<li><strong>${escapeHtml(p.pattern)}</strong>: ${escapeHtml(p.evidence)}</li>`).join('')}
+            </ul>
+        </div>`;
     }
 
     if (data.recommendations?.length) {
-        html += `<div class="pattern-section"><h3>💡 Recommendations</h3>`;
-        data.recommendations.forEach(r => {
-            html += `<div class="pattern-item">→ ${escapeHtml(r)}</div>`;
-        });
-        html += '</div>';
+        html += `
+        <div class="pattern-box">
+            <h4>AI Recommendations</h4>
+            <ul class="insights-list">
+                ${data.recommendations.map(r => `<li>${escapeHtml(r)}</li>`).join('')}
+            </ul>
+        </div>`;
     }
 
+    html += '</div>';
     patternsResult.innerHTML = html;
 }
 
-// ── Context Chat ───────────────────────────────────────────────────
+// ── 14. Oracle Chat ────────────────────────────────────────────────
 
 chatSendBtn.addEventListener('click', sendChatMessage);
 chatInput.addEventListener('keydown', (e) => {
@@ -736,55 +854,53 @@ async function sendChatMessage() {
     const message = chatInput.value.trim();
     if (!message) return;
 
-    appendChatMsg('user', message);
+    appendChatBubble('user', message);
     chatInput.value = '';
     chatSendBtn.disabled = true;
 
-    const typingId = appendChatMsg('assistant', '⏳ Oracle synthesizing thought history...');
+    const typingEl = appendChatBubble('assistant', 'Synthesizing thought memory...');
 
     try {
         const res = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message, history: chatHistory }),
+            body: JSON.stringify({ message, history: chatHistory })
         });
-        
-        const rawText = await res.text();
-        let data;
-        try {
-            data = JSON.parse(rawText);
-        } catch {
-            throw new Error(rawText || `Server is starting up (HTTP ${res.status}). Please try again in a few seconds.`);
-        }
+        const data = await res.json();
 
-        if (!res.ok) {
-            throw new Error(data.detail || data.message || `Server error (${res.status})`);
-        }
-
-        typingId.querySelector('.msg-content p').textContent = data.response;
+        typingEl.querySelector('.bubble-content p').textContent = data.response;
 
         chatHistory.push({ role: 'user', content: message });
         chatHistory.push({ role: 'model', content: data.response });
         if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
     } catch (err) {
-        typingId.querySelector('.msg-content p').textContent = `❌ Error: ${err.message}`;
+        typingEl.querySelector('.bubble-content p').textContent = `Error: ${err.message}`;
     } finally {
         chatSendBtn.disabled = false;
         chatInput.focus();
     }
 }
 
-function appendChatMsg(role, text) {
+function appendChatBubble(role, text) {
     const div = document.createElement('div');
-    div.className = `chat-msg ${role}`;
-    div.innerHTML = `<div class="msg-content"><p>${escapeHtml(text)}</p></div>`;
+    div.className = `chat-bubble ${role}`;
+    const iconSvg = role === 'user' ? 
+        `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>` :
+        `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00f2fe" stroke-width="2"><path d="M12 2L14.5 8.5L21 11L14.5 13.5L12 20L9.5 13.5L3 11L9.5 8.5L12 2Z"/></svg>`;
+
+    div.innerHTML = `
+        <div class="bubble-avatar">${iconSvg}</div>
+        <div class="bubble-content"><p>${escapeHtml(text)}</p></div>
+    `;
     chatMessages.appendChild(div);
     chatMessages.scrollTop = chatMessages.scrollHeight;
     return div;
 }
 
-// ── Init ───────────────────────────────────────────────────────────
+// ── 15. App Initialization ─────────────────────────────────────────
 
+initCosmicBackground();
+init3DAudioOrb();
 initIndexedDB();
 initGeolocation();
 loadThoughts();
