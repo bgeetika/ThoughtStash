@@ -1,0 +1,344 @@
+/**
+ * ThoughtStash — Frontend logic
+ * Voice recording, API calls, UI rendering
+ */
+
+// ── State ──────────────────────────────────────────────────────────
+
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+let timerInterval = null;
+let seconds = 0;
+let chatHistory = [];
+
+// ── DOM refs ───────────────────────────────────────────────────────
+
+const recordBtn = document.getElementById('recordBtn');
+const recordStatus = document.getElementById('recordStatus');
+const timerEl = document.getElementById('timer');
+const processing = document.getElementById('processing');
+const latestThought = document.getElementById('latestThought');
+const thoughtsList = document.getElementById('thoughtsList');
+const searchInput = document.getElementById('searchInput');
+const searchBtn = document.getElementById('searchBtn');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const patternsResult = document.getElementById('patternsResult');
+const chatMessages = document.getElementById('chatMessages');
+const chatInput = document.getElementById('chatInput');
+const chatSendBtn = document.getElementById('chatSendBtn');
+
+// ── Tab Navigation ─────────────────────────────────────────────────
+
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab).classList.add('active');
+
+        // Load data when switching tabs
+        if (tab.dataset.tab === 'thoughts') loadThoughts();
+    });
+});
+
+// ── Voice Recording ────────────────────────────────────────────────
+
+recordBtn.addEventListener('click', async () => {
+    if (!isRecording) {
+        await startRecording();
+    } else {
+        stopRecording();
+    }
+});
+
+async function startRecording() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) audioChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+            stream.getTracks().forEach(t => t.stop());
+            const blob = new Blob(audioChunks, { type: 'audio/webm' });
+            await uploadThought(blob);
+        };
+
+        mediaRecorder.start(250); // collect in 250ms chunks
+        isRecording = true;
+        recordBtn.classList.add('recording');
+        recordStatus.textContent = 'Recording... tap to stop';
+        timerEl.style.display = 'block';
+        seconds = 0;
+        updateTimer();
+        timerInterval = setInterval(() => { seconds++; updateTimer(); }, 1000);
+    } catch (err) {
+        recordStatus.textContent = '⚠️ Microphone access denied';
+        console.error('Mic error:', err);
+    }
+}
+
+function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+    }
+    isRecording = false;
+    recordBtn.classList.remove('recording');
+    recordStatus.textContent = 'Processing...';
+    clearInterval(timerInterval);
+}
+
+function updateTimer() {
+    const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+    const s = String(seconds % 60).padStart(2, '0');
+    timerEl.textContent = `${m}:${s}`;
+}
+
+// ── Upload & Process ───────────────────────────────────────────────
+
+async function uploadThought(blob) {
+    latestThought.style.display = 'none';
+    processing.style.display = 'block';
+
+    const formData = new FormData();
+    formData.append('audio', blob, 'thought.webm');
+
+    try {
+        const res = await fetch('/api/thoughts', { method: 'POST', body: formData });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Upload failed');
+        }
+        const thought = await res.json();
+        showThoughtResult(thought);
+    } catch (err) {
+        recordStatus.textContent = `❌ Error: ${err.message}`;
+        console.error('Upload error:', err);
+    } finally {
+        processing.style.display = 'none';
+        recordStatus.textContent = 'Tap to start recording';
+        timerEl.style.display = 'none';
+    }
+}
+
+function showThoughtResult(thought) {
+    document.getElementById('resultTranscript').textContent = thought.transcript || '—';
+    document.getElementById('resultSummary').textContent = thought.summary || '—';
+    document.getElementById('resultMood').textContent = thought.mood || '—';
+
+    const topicsEl = document.getElementById('resultTopics');
+    topicsEl.innerHTML = '';
+    (thought.topics || []).forEach(t => {
+        const span = document.createElement('span');
+        span.className = 'tag';
+        span.textContent = t;
+        topicsEl.appendChild(span);
+    });
+
+    const insightsEl = document.getElementById('resultInsights');
+    insightsEl.innerHTML = '';
+    (thought.key_insights || []).forEach(insight => {
+        const li = document.createElement('li');
+        li.textContent = insight;
+        insightsEl.appendChild(li);
+    });
+
+    latestThought.style.display = 'block';
+}
+
+// ── Thoughts Timeline ──────────────────────────────────────────────
+
+async function loadThoughts(searchQuery) {
+    let url = '/api/thoughts';
+    if (searchQuery) url = `/api/search?q=${encodeURIComponent(searchQuery)}`;
+
+    try {
+        const res = await fetch(url);
+        const thoughts = await res.json();
+        renderThoughts(thoughts, !!searchQuery);
+    } catch (err) {
+        thoughtsList.innerHTML = '<p class="empty-state">Failed to load thoughts</p>';
+    }
+}
+
+function renderThoughts(thoughts, isSearch) {
+    if (!thoughts.length) {
+        thoughtsList.innerHTML = `<p class="empty-state">${
+            isSearch ? 'No matching thoughts found' : 'No thoughts yet. Go capture some! 🎙️'
+        }</p>`;
+        return;
+    }
+
+    thoughtsList.innerHTML = '';
+    thoughts.forEach(t => {
+        const card = document.createElement('div');
+        card.className = 'thought-card';
+
+        const date = new Date(t.created_at).toLocaleString();
+        const relevance = t.relevance !== undefined ? ` · relevance: ${(t.relevance * 100).toFixed(0)}%` : '';
+
+        card.innerHTML = `
+            <div class="meta">
+                <span class="date">📅 ${date}${relevance}</span>
+                <span class="mood-badge">${t.mood || '—'}</span>
+            </div>
+            <div class="summary">${t.summary || '—'}</div>
+            <div class="transcript">${t.transcript || ''}</div>
+            <div class="card-footer">
+                ${(t.topics || []).map(tp => `<span class="tag">${tp}</span>`).join('')}
+            </div>
+        `;
+        thoughtsList.appendChild(card);
+    });
+}
+
+searchBtn.addEventListener('click', () => {
+    const q = searchInput.value.trim();
+    if (q) loadThoughts(q);
+    else loadThoughts();
+});
+searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') searchBtn.click();
+});
+
+// ── Pattern Analysis ───────────────────────────────────────────────
+
+analyzeBtn.addEventListener('click', async () => {
+    analyzeBtn.disabled = true;
+    analyzeBtn.textContent = '⏳ Analyzing...';
+    patternsResult.innerHTML = '<div class="processing"><div class="spinner"></div><p>Analyzing your thought patterns...</p></div>';
+
+    try {
+        const res = await fetch('/api/patterns');
+        const data = await res.json();
+
+        if (data.error) {
+            patternsResult.innerHTML = `<p class="empty-state">${data.error}. You have ${data.thought_count} thought(s).</p>`;
+            return;
+        }
+
+        renderPatterns(data);
+    } catch (err) {
+        patternsResult.innerHTML = `<p class="empty-state">❌ Analysis failed: ${err.message}</p>`;
+    } finally {
+        analyzeBtn.disabled = false;
+        analyzeBtn.textContent = '🔍 Analyze My Thinking';
+    }
+});
+
+function renderPatterns(data) {
+    let html = '';
+
+    // One-line summary
+    if (data.one_line_summary) {
+        html += `<div class="one-line-summary">🧠 ${data.one_line_summary}</div>`;
+    }
+
+    // Mood trajectory
+    if (data.mood_trajectory) {
+        html += `
+        <div class="pattern-section">
+            <h3>😊 Mood Trajectory — ${data.mood_trajectory.trend}</h3>
+            <p style="font-size:14px; line-height:1.6">${data.mood_trajectory.summary}</p>
+        </div>`;
+    }
+
+    // Recurring themes
+    if (data.recurring_themes?.length) {
+        html += `<div class="pattern-section"><h3>🔄 Recurring Themes</h3>`;
+        data.recurring_themes.forEach(t => {
+            html += `<div class="pattern-item"><strong>${t.theme}</strong> (×${t.frequency}) — ${t.description}</div>`;
+        });
+        html += '</div>';
+    }
+
+    // Emerging patterns
+    if (data.emerging_patterns?.length) {
+        html += `<div class="pattern-section"><h3>📈 Emerging Patterns</h3>`;
+        data.emerging_patterns.forEach(p => {
+            html += `<div class="pattern-item"><strong>${p.pattern}</strong> — ${p.evidence}</div>`;
+        });
+        html += '</div>';
+    }
+
+    // Connections
+    if (data.connections?.length) {
+        html += `<div class="pattern-section"><h3>🔗 Thought Connections</h3>`;
+        data.connections.forEach(c => {
+            html += `<div class="pattern-item">"${c.thought_a}" ↔ "${c.thought_b}" — <em>${c.connection}</em></div>`;
+        });
+        html += '</div>';
+    }
+
+    // Recommendations
+    if (data.recommendations?.length) {
+        html += `<div class="pattern-section"><h3>💡 Recommendations</h3>`;
+        data.recommendations.forEach(r => {
+            html += `<div class="pattern-item">→ ${r}</div>`;
+        });
+        html += '</div>';
+    }
+
+    patternsResult.innerHTML = html;
+}
+
+// ── Context Chat ───────────────────────────────────────────────────
+
+chatSendBtn.addEventListener('click', sendChatMessage);
+chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) sendChatMessage();
+});
+
+async function sendChatMessage() {
+    const message = chatInput.value.trim();
+    if (!message) return;
+
+    // Show user message
+    appendChatMsg('user', message);
+    chatInput.value = '';
+    chatSendBtn.disabled = true;
+
+    // Show typing indicator
+    const typingId = appendChatMsg('assistant', '⏳ Thinking...');
+
+    try {
+        const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message, history: chatHistory }),
+        });
+        const data = await res.json();
+
+        // Update typing indicator with response
+        typingId.querySelector('.msg-content p').textContent = data.response;
+
+        // Track history
+        chatHistory.push({ role: 'user', content: message });
+        chatHistory.push({ role: 'model', content: data.response });
+        // Keep history manageable
+        if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+    } catch (err) {
+        typingId.querySelector('.msg-content p').textContent = `❌ Error: ${err.message}`;
+    } finally {
+        chatSendBtn.disabled = false;
+        chatInput.focus();
+    }
+}
+
+function appendChatMsg(role, text) {
+    const div = document.createElement('div');
+    div.className = `chat-msg ${role}`;
+    div.innerHTML = `<div class="msg-content"><p>${text}</p></div>`;
+    chatMessages.appendChild(div);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    return div;
+}
+
+// ── Init ───────────────────────────────────────────────────────────
+
+// Load thoughts on startup (for the thoughts tab)
+loadThoughts();
