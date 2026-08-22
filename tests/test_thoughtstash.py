@@ -11,14 +11,21 @@ Tests:
 
 import json
 import os
+import tempfile
 import unittest
 from datetime import datetime
 
-# Set temporary test database
+# Set isolated test database
+temp_db = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+temp_db_path = temp_db.name
+temp_db.close()
+
+import db
+db.DB_PATH = temp_db_path
+
 os.environ["GEMINI_API_KEY"] = "fake_test_key_for_unit_tests"
 
 import agents
-import db
 from agents import ScribeOutputSchema, ConnectorOutputSchema
 
 

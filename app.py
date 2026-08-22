@@ -317,12 +317,13 @@ async def search_thoughts(q: str):
         return []
 
     def cosine(a, b):
-        if not a or not b:
+        if not a or not b or len(a) != len(b):
             return 0.0
-        a, b = np.array(a), np.array(b)
-        return float(
-            np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-8)
-        )
+        a, b = np.array(a, dtype=float), np.array(b, dtype=float)
+        norm = np.linalg.norm(a) * np.linalg.norm(b)
+        if norm == 0:
+            return 0.0
+        return float(np.dot(a, b) / (norm + 1e-8))
 
     scored = []
     for t in all_thoughts:
@@ -359,14 +360,6 @@ async def chat(req: ChatRequest):
     # Retrieve most relevant thoughts via cosine similarity
     try:
         query_emb = await agents.get_embedding_async(req.message)
-
-        def cosine(a, b):
-            if not a or not b:
-                return 0.0
-            a, b = np.array(a), np.array(b)
-            return float(
-                np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-8)
-            )
 
         scored = [
             (cosine(query_emb, t.get("embedding", [])), t) for t in all_thoughts

@@ -188,6 +188,36 @@ DEMO_THOUGHTS = [
         "latitude": 37.7955,
         "longitude": -122.3937,
         "location_name": "Embarcadero, San Francisco, CA"
+    },
+    {
+        "created_at": "2026-08-16T19:15:00Z",
+        "transcript": "Manya's birthday party was so much fun, but it was way too crowded. I really wish I had invited a smaller number of people so it felt more relaxed.",
+        "summary": "Reflecting on Manya's fun but overcrowded birthday party and wishing for a smaller, more intimate guest list.",
+        "topics": ["family", "party planning", "Manya", "guest list", "event reflections"],
+        "entities": ["Manya"],
+        "mood": "reflective",
+        "key_insights": ["Smaller guest lists at children's parties allow for more relaxed, high-quality interactions."],
+        "thought_type": "reflection",
+        "urgency": "medium",
+        "implicit_questions": ["What is the ideal guest count for a kids' birthday party?"],
+        "latitude": 37.3195,
+        "longitude": -122.0435,
+        "location_name": "Memorial Park, Cupertino, CA"
+    },
+    {
+        "created_at": "2026-08-22T16:30:00Z",
+        "transcript": "Today's party was awesome, really loved the piñata! Next time I should definitely get that for Ananya's birthday party.",
+        "summary": "Enjoyed today's party and decided to get a piñata for Ananya's upcoming birthday party.",
+        "topics": ["family", "party planning", "Ananya", "birthday ideas", "piñata"],
+        "entities": ["Ananya", "Piñata"],
+        "mood": "joyful",
+        "key_insights": ["Piñatas are a massive hit for kids' celebrations and will be great for Ananya."],
+        "thought_type": "decision",
+        "urgency": "medium",
+        "implicit_questions": ["Where to buy a custom piñata?", "Which outdoor park venue is best for hanging a piñata?"],
+        "latitude": 37.3755,
+        "longitude": -122.0620,
+        "location_name": "Cuesta Park, Mountain View, CA"
     }
 ]
 

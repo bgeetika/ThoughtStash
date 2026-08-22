@@ -21,8 +21,10 @@ import db
 
 load_dotenv()
 
-DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.7-flash")
-FALLBACK_MODELS = [DEFAULT_MODEL, "gemini-3.6-flash", "gemini-3.5-flash"]
+DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
+FALLBACK_MODELS = [DEFAULT_MODEL, "gemini-3.6-flash", "gemini-3.7-flash", "gemini-3.5-flash"]
+# Deduplicate while preserving order
+FALLBACK_MODELS = list(dict.fromkeys(FALLBACK_MODELS))
 EMBEDDING_MODELS = ["gemini-embedding-001", "gemini-embedding-2"]
 
 _client = None
@@ -47,7 +49,6 @@ def get_client() -> genai.Client:
         )
         return _client
 
-    # Allow startup even without credentials (will raise only upon call)
     raise ValueError(
         "No Gemini API key found. Please set the GEMINI_API_KEY environment"
         " variable or add GEMINI_API_KEY=your_key to a .env file."
@@ -55,26 +56,25 @@ def get_client() -> genai.Client:
 
 
 def _sync_generate_with_fallback(contents, config=None):
-    """Synchronous generator with model fallbacks and retry logic."""
+    """Synchronous generator with instantaneous model failover on 503/429/404."""
     client = get_client()
     last_err = None
     for model_name in FALLBACK_MODELS:
-        for attempt in range(2):
-            try:
-                if config:
-                    return client.models.generate_content(
-                        model=model_name,
-                        contents=contents,
-                        config=config,
-                    )
+        try:
+            if config:
                 return client.models.generate_content(
                     model=model_name,
                     contents=contents,
+                    config=config,
                 )
-            except Exception as e:
-                last_err = e
-                time.sleep(0.3)
-                continue
+            return client.models.generate_content(
+                model=model_name,
+                contents=contents,
+            )
+        except Exception as e:
+            last_err = e
+            # Immediate failover to next model in fallback list
+            continue
     raise last_err or RuntimeError("Failed to generate content with any model")
 
 
@@ -234,10 +234,13 @@ def _retrieve_context_for_connector(new_thought: dict, max_items: int = 12) -> l
         return candidates[:max_items]
 
     def cosine(a, b):
-        if not a or not b:
+        if not a or not b or len(a) != len(b):
             return 0.0
-        a, b = np.array(a), np.array(b)
-        return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-8))
+        a, b = np.array(a, dtype=float), np.array(b, dtype=float)
+        norm = np.linalg.norm(a) * np.linalg.norm(b)
+        if norm == 0:
+            return 0.0
+        return float(np.dot(a, b) / (norm + 1e-8))
 
     # Score by similarity
     scored = [(cosine(new_emb, t.get("embedding", [])), t) for t in candidates]
