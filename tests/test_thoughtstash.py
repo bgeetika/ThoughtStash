@@ -611,6 +611,27 @@ class TestAppEndpoints(unittest.TestCase):
         res2 = self.client.delete(f"/api/thoughts/{t_id}")
         self.assertEqual(res2.status_code, 404)
 
+    def test_geo_current_endpoint(self):
+        """GET /api/geo/current -> returns initial auto-detected geo default."""
+        res = self.client.get("/api/geo/current")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn("location_name", data)
+        self.assertIn("latitude", data)
+        self.assertIn("longitude", data)
+
+    def test_mcp_server_tools_registration(self):
+        """Verify mcp_server.py registers search, context, patterns, and stash tools."""
+        import mcp_server
+        tools = asyncio.run(mcp_server.server.list_tools())
+        tool_names = [t.name for t in tools]
+        self.assertIn("search_thoughts", tool_names)
+        self.assertIn("get_recent_context", tool_names)
+        self.assertIn("get_thinking_patterns", tool_names)
+        self.assertIn("get_spatial_memories", tool_names)
+        self.assertIn("stash_new_thought", tool_names)
+        self.assertIn("explore_knowledge_graph", tool_names)
+
 
 if __name__ == "__main__":
     unittest.main()
