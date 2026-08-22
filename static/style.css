@@ -1018,9 +1018,9 @@ body {
 
 .bubble-action {
     font-size: 12px;
-    color: #1e40af;
+    color: var(--petrol);
     background: var(--petrol-tint);
-    border: 1px solid #dbeafe;
+    border: 1px solid var(--color-primary-border);
     border-radius: var(--radius-sm);
     padding: 8px 12px;
     margin: 8px 0;
@@ -1028,6 +1028,14 @@ body {
     display: flex;
     align-items: flex-start;
     gap: 8px;
+}
+
+.bubble-source {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 8px;
+    letter-spacing: 0.03em;
 }
 
 .prompt-chips-row {

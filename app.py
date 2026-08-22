@@ -682,6 +682,7 @@ async def chat(req: ChatRequest):
         "response": history_text,
         "context_layer_applied": chat_result.get("context_layer_applied", False),
         "matched_thought_count": chat_result.get("matched_thought_count", 0),
+        "web_search_used": chat_result.get("web_search_used", False),
     }
 
 

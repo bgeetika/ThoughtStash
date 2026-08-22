@@ -484,7 +484,12 @@ async def oracle_chat(
     connector_data: dict | None = None,
     chat_history: list[dict] | None = None,
 ) -> dict:
-    """Assistant chat: Attaches a personal ThoughtStash Context Layer to the user input."""
+    """Two-step assistant chat:
+    1. Always query our DB and build a personal context layer.
+    2. If the query needs real-world info (restaurants, directions, facts),
+       call Gemini with GoogleSearch grounding first, then format.
+       Otherwise, answer purely from the context layer.
+    """
     durable_themes = db.get_all_themes()
     context_layer = build_thought_context_layer(relevant_thoughts, durable_themes)
 
@@ -494,33 +499,65 @@ async def oracle_chat(
             role = "User" if msg["role"] == "user" else "Assistant"
             history_str += f"{role}: {msg['content']}\n"
 
-    # Context layer appended directly to the user input
+    # ── Step 1: Classify if the query needs web lookup ──────────────
+    needs_web = _query_needs_web_search(query, context_layer)
+
+    # ── Step 2a: Web-grounded path ──────────────────────────────────
+    web_context = ""
+    if needs_web:
+        try:
+            print(f"[oracle_chat] Web search triggered for: {query[:80]}")
+            web_context = await _google_search_lookup(
+                query, context_layer, history_str
+            )
+            print(f"[oracle_chat] Web search returned {len(web_context)} chars")
+        except Exception as e:
+            print(f"[oracle_chat] Web search failed: {e}")
+            web_context = ""  # Graceful fallback: answer without web
+
+    # ── Step 2b: Build the final prompt ─────────────────────────────
     augmented_user_input = f"""{query}
 
 {context_layer['context_text']}"""
 
-    prompt = f"""You are ThoughtStash Assistant — an intelligent thinking partner that works over the user's personal thought stash.
+    web_section = ""
+    if web_context:
+        web_section = f"""
 
-CONTEXT LAYER ARCHITECTURE:
-Every user request comes with an attached [THOUGHTSTASH CONTEXT LAYER] drawn from their personal voice notes, ideas, and durable themes.
+WEB SEARCH RESULTS (use these for real-world recommendations, facts, and details):
+{web_context}
+"""
+
+    prompt = f"""You are the Thought Stash assistant — a thinking partner grounded in the user's personal notes.
+
+HOW THIS WORKS:
+Every request comes with two possible sources of information:
+1. [THOUGHTSTASH CONTEXT LAYER] — the user's own recorded voice notes, ideas, and themes from their stash.
+2. [WEB SEARCH RESULTS] — real-world information from Google Search (only when the query needs it).
 
 OPERATING RULES:
-1. When the user asks to RECALL past notes (e.g. "what did I say about X?", "what did I plan?"):
-   - Ground your answer strictly in the notes provided in the Context Layer. Do NOT invent past recordings or dates.
-   - If the Context Layer has no notes on that topic, state that no notes were recorded for that topic yet.
+1. RECALL questions ("what did I say about X?", "what did I plan?"):
+   - Answer strictly from the Context Layer. Never invent notes or dates.
+   - If no notes exist on the topic, say so.
 
-2. When the user asks for RECOMMENDATIONS, SUGGESTIONS, OR NEXT STEPS (e.g. "suggest some restaurants near that location", "give me ideas", "how should I prepare?"):
-   - Use the background from the Context Layer (e.g. destinations, anniversary, physical accessibility, hydration, walking habits) to tailor real-world, high-quality, practical recommendations.
-   - Provide concrete names, places, or actionable steps.
+2. RECOMMENDATION / REAL-WORLD questions ("suggest restaurants", "what's the weather", "give me ideas"):
+   - Use the Context Layer as background (locations, preferences, trip plans).
+   - Use the Web Search Results for concrete, accurate, real-world answers.
+   - Provide specific names, ratings, addresses when available.
 
-FORMAT RULES:
-- Keep the summary to 1-2 direct, clear sentences.
-- Provide 2-3 concise, high-value bullet points.
-- Do NOT output raw markdown headers (###), extra asterisks, or messy formatting.
+3. MIXED questions ("what restaurants are near the place I mentioned?"):
+   - First ground the location/context from the Context Layer.
+   - Then use the Web Search Results for the actual recommendations.
 
-Recent Conversation History:
+FORMAT:
+- summary: 1-2 clear sentences (max 40 words).
+- key_points: 2-4 concise bullets with specific details.
+- suggested_action: optional next step.
+- No markdown headers, no asterisks, no hashtags.
+
+Recent Conversation:
 {history_str or "New conversation"}
-
+{web_section}
 User Request with Context Layer:
 {augmented_user_input}
 """
@@ -538,6 +575,7 @@ User Request with Context Layer:
         data = json.loads(response.text)
         data["context_layer_applied"] = context_layer["has_context"]
         data["matched_thought_count"] = context_layer["thought_count"]
+        data["web_search_used"] = bool(web_context)
         return data
     except Exception:
         return {
@@ -546,4 +584,68 @@ User Request with Context Layer:
             "suggested_action": None,
             "context_layer_applied": context_layer["has_context"],
             "matched_thought_count": context_layer["thought_count"],
+            "web_search_used": bool(web_context),
         }
+
+
+def _query_needs_web_search(query: str, context_layer: dict) -> bool:
+    """Lightweight heuristic: does this query need real-world info beyond the user's notes?"""
+    q = query.lower()
+
+    # Strong recommendation/lookup signals
+    web_keywords = [
+        "suggest", "recommend", "restaurant", "hotel", "cafe", "coffee",
+        "directions", "weather", "best", "top", "nearby", "near",
+        "price", "cost", "hours", "open", "book a", "reserve",
+        "flight", "train", "bus route",
+        "review", "rating", "menu", "recipe",
+        "how to", "what is", "where is", "when is",
+        "compare", "alternative", "option",
+        "buy", "shop", "store", "deal",
+        "concert", "movie", "ticket",
+        "news", "latest", "current", "today",
+    ]
+
+    if any(kw in q for kw in web_keywords):
+        return True
+
+    # Question patterns that likely need external info
+    if q.endswith("?") and not any(
+        recall in q for recall in ["did i", "have i", "what did i", "my notes", "my thought"]
+    ):
+        return True
+
+    return False
+
+
+async def _google_search_lookup(
+    query: str, context_layer: dict, history_str: str
+) -> str:
+    """Call Gemini with GoogleSearch grounding to get real-world info.
+    Returns a plain-text summary of web results.
+    """
+    # Build a search-optimized prompt that includes location context from notes
+    locations = context_layer.get("locations", [])
+    location_hint = f" (near {', '.join(locations[:2])})" if locations else ""
+
+    search_prompt = f"""Based on the user's question, search the web and return useful, specific, factual information.
+
+User's question: {query}{location_hint}
+
+Recent conversation context:
+{history_str or "None"}
+
+Return a concise factual summary with specific names, addresses, ratings, or details.
+Keep it under 300 words. Focus on actionable, real information."""
+
+    config = types.GenerateContentConfig(
+        tools=[types.Tool(google_search=types.GoogleSearch())],
+    )
+
+    response = await generate_with_fallback(
+        contents=[search_prompt],
+        config=config,
+    )
+
+    return response.text or ""
+

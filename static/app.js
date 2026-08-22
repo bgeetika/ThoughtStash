@@ -1102,6 +1102,14 @@ function renderAssistantResponse(data, bubbleEl) {
         html += `<div class="bubble-action"><span>💡</span> <div>${escapeHtml(data.suggested_action)}</div></div>`;
     }
 
+    // Source indicator
+    const sources = [];
+    if (data.matched_thought_count > 0) sources.push(`${data.matched_thought_count} note${data.matched_thought_count > 1 ? 's' : ''}`);
+    if (data.web_search_used) sources.push('web search');
+    if (sources.length > 0) {
+        html += `<div class="bubble-source">from ${sources.join(' + ')}</div>`;
+    }
+
     // Fallback if data was plain string
     if (!html && data.response) {
         html = `<p>${escapeHtml(data.response)}</p>`;
