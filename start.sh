@@ -1,28 +1,57 @@
-#!/bin/bash
-# MindTrail — One-command launcher
+#!/usr/bin/env bash
 set -e
 
-cd "$(dirname "$0")"
+# ── 1. Detect Python Binary ─────────────────────────────────────────
 
-# Check for virtual env
-if [ ! -d ".venv" ]; then
-    echo "🔧 Creating virtual environment..."
-    python3 -m venv .venv
+if command -v python3 &> /dev/null && [[ "$(python3 --version 2>&1)" != *"not found"* ]]; then
+    PYTHON_BIN="python3"
+elif command -v python &> /dev/null && [[ "$(python --version 2>&1)" != *"not found"* ]]; then
+    PYTHON_BIN="python"
+elif command -v py &> /dev/null; then
+    PYTHON_BIN="py"
+else
+    echo "❌ Error: Python is not installed or not in PATH."
+    exit 1
 fi
 
-source .venv/bin/activate
+echo "🧠 Using Python: $($PYTHON_BIN --version) ($PYTHON_BIN)"
 
-echo "📦 Installing dependencies..."
+# ── 2. Setup Virtual Environment ────────────────────────────────────
+
+if [ ! -d ".venv" ]; then
+    echo "📦 Creating virtual environment..."
+    $PYTHON_BIN -m venv .venv
+fi
+
+# Detect Windows/Git-Bash vs Unix activation path
+if [ -f ".venv/Scripts/activate" ]; then
+    # Windows / Git Bash
+    source .venv/Scripts/activate
+elif [ -f ".venv/bin/activate" ]; then
+    # Linux / macOS / WSL
+    source .venv/bin/activate
+else
+    echo "⚠️ Warning: Activation script not found. Proceeding with environment..."
+fi
+
+# ── 3. Install Dependencies ─────────────────────────────────────────
+
+echo "📦 Verifying dependencies..."
 pip install -q -r requirements.txt
 
-PORT=${PORT:-8877}
+# ── 4. Configuration & Launch ───────────────────────────────────────
+
+PORT="${PORT:-8877}"
+HOST="${HOST:-0.0.0.0}"
 
 echo ""
 echo "🧠 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "   ThoughtStash — Voice Thought Capture"
-echo "   Local:  http://localhost:${PORT}"
-echo "   Remote: http://$(hostname).c.googlers.com:${PORT}"
+echo "   Local:   http://localhost:${PORT}"
+if [ "$HOST" = "0.0.0.0" ]; then
+    echo "   Network: http://$(hostname).c.googlers.com:${PORT} 2>/dev/null || true"
+fi
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-uvicorn app:app --host 0.0.0.0 --port ${PORT} --reload
+exec uvicorn app:app --host "$HOST" --port "$PORT" --reload
