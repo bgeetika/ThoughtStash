@@ -568,8 +568,8 @@ async def chat(req: ChatRequest):
     if not all_thoughts:
         return {
             "response": (
-                "You haven't captured any thoughts yet! "
-                "Hit the 🎙️ button and start talking."
+                "You haven't recorded any notes yet. "
+                "Tap the record button or type a thought above to get started."
             )
         }
 
@@ -644,14 +644,14 @@ async def agent_status():
     return {
         "agents": [
             {
-                "name": "🖊️ Scribe",
-                "role": "Structured Voice Capture (Pydantic)",
+                "name": "Scribe",
+                "role": "Voice Transcription & Tagging",
                 "status": "ready",
                 "thoughts_processed": len(thoughts),
             },
             {
-                "name": "🔗 Connector",
-                "role": "Dynamic Long-Horizon Memory Engine",
+                "name": "Connector",
+                "role": "Connection & Pattern Discovery",
                 "status": "active" if latest_connector_insights else "waiting",
                 "durable_themes_tracked": len(themes),
                 "last_insight": latest_connector_insights.get(
@@ -659,8 +659,8 @@ async def agent_status():
                 ),
             },
             {
-                "name": "🔮 Oracle",
-                "role": "Hierarchical Context Thinking Partner",
+                "name": "Assistant",
+                "role": "Interactive Memory Search",
                 "status": "ready",
             },
         ],

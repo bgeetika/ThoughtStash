@@ -3,303 +3,279 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ThoughtStash — Voice Thought Intelligence</title>
+    <title>ThoughtStash — Voice Notebook & Memory</title>
     
-    <!-- Google Fonts: Editorial Serif + Modern Geometric Sans + Technical Mono -->
+    <!-- Modern Sans & Mono Typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     
-    <!-- Leaflet CSS & JS for Spatio-Temporal Radar Map -->
+    <!-- Leaflet Map CSS & JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     
-    <!-- Three.js (for 3D Audio Orb & 3D Neural Constellation) -->
+    <!-- Three.js (for 3D Audio Visualizer & Interactive Knowledge Graph) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <!-- Cosmic Background Canvas -->
-    <canvas id="cosmicBgCanvas" class="cosmic-bg"></canvas>
-
-    <!-- Top App Shell -->
     <div class="app-shell">
-        <!-- Header -->
+        <!-- Minimal Light Header -->
         <header class="app-header">
             <div class="brand-container">
                 <div class="brand-logo-mark">
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 2L14.5 8.5L21 11L14.5 13.5L12 20L9.5 13.5L3 11L9.5 8.5L12 2Z" fill="url(#brandGrad)" />
-                        <circle cx="12" cy="11" r="3" fill="#0a0b0e" />
-                        <defs>
-                            <linearGradient id="brandGrad" x1="3" y1="2" x2="21" y2="20" gradientUnits="userSpaceOnUse">
-                                <stop stop-color="#00f2fe"/>
-                                <stop offset="1" stop-color="#6366f1"/>
-                            </linearGradient>
-                        </defs>
+                    <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <line x1="8" y1="16" x2="24" y2="8" stroke="#cbd5e1" stroke-width="3" stroke-linecap="round"/>
+                        <line x1="8" y1="16" x2="22" y2="24" stroke="#cbd5e1" stroke-width="3" stroke-linecap="round"/>
+                        <line x1="24" y1="8" x2="22" y2="24" stroke="#cbd5e1" stroke-width="3" stroke-linecap="round"/>
+                        <circle cx="8" cy="16" r="6" fill="#10b981" />
+                        <circle cx="8" cy="16" r="3" fill="#ffffff" />
+                        <circle cx="24" cy="8" r="5" fill="#3b82f6" />
+                        <circle cx="24" cy="8" r="2.5" fill="#ffffff" />
+                        <circle cx="22" cy="24" r="5.5" fill="#f59e0b" />
+                        <circle cx="22" cy="24" r="2.5" fill="#ffffff" />
                     </svg>
                 </div>
                 <div class="brand-text">
                     <h1>ThoughtStash</h1>
-                    <span class="brand-tagline">Long-Horizon Voice Agent</span>
+                    <span class="brand-tagline">Voice notes & connected memory</span>
                 </div>
             </div>
 
-            <!-- Agent Telemetry Bar -->
-            <div class="agent-telemetry-bar">
-                <div class="agent-pill" id="scribeStatus">
-                    <span class="agent-led status-ready"></span>
-                    <span class="agent-name">Scribe</span>
-                    <span class="agent-state">Ready</span>
-                </div>
-                <div class="agent-pill" id="connectorStatus">
-                    <span class="agent-led status-ready"></span>
-                    <span class="agent-name">Connector</span>
-                    <span class="agent-state">Active</span>
-                </div>
-                <div class="agent-pill" id="oracleStatus">
-                    <span class="agent-led status-ready"></span>
-                    <span class="agent-name">Oracle</span>
-                    <span class="agent-state">Grounded</span>
-                </div>
+            <!-- Status Indicator -->
+            <div class="system-status-pill">
+                <span class="status-dot"></span>
+                <span class="status-label">Ready</span>
             </div>
         </header>
 
-        <!-- Floating Glass Command Dock (Navigation) -->
-        <nav class="glass-command-dock">
-            <button class="nav-dock-btn active" data-tab="capture">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
-                <span>Capture</span>
+        <!-- Clean Navigation Dock -->
+        <nav class="nav-dock">
+            <button class="nav-btn active" data-tab="capture">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                <span>Record</span>
             </button>
-            <button class="nav-dock-btn" data-tab="mapTab">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
-                <span>Mind Trail</span>
+            <button class="nav-btn" data-tab="mapTab">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+                <span>Map</span>
             </button>
-            <button class="nav-dock-btn" data-tab="graphTab">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
-                <span>3D Neural Space</span>
+            <button class="nav-btn" data-tab="graphTab">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
+                <span>Connections</span>
             </button>
-            <button class="nav-dock-btn" data-tab="thoughts">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <button class="nav-btn" data-tab="thoughts">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
                 <span>Timeline</span>
             </button>
-            <button class="nav-dock-btn" data-tab="patterns">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+            <button class="nav-btn" data-tab="patterns">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="m13 13 6 6"/></svg>
                 <span>Patterns</span>
             </button>
-            <button class="nav-dock-btn" data-tab="chat">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                <span>Oracle</span>
+            <button class="nav-btn" data-tab="chat">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <span>Ask</span>
             </button>
         </nav>
 
         <!-- Main Workspace -->
         <main class="workspace">
             
-            <!-- 🎙️ 1. CAPTURE TAB -->
+            <!-- 🎙️ 1. CAPTURE / RECORD TAB -->
             <section id="capture" class="tab-view active">
-                <div class="hero-capture-stage">
-                    <div class="editorial-headline">
-                        <h2>Speak into the void. <em>Let intelligence connect the rest.</em></h2>
-                        <p class="subtitle">Capturing spontaneous thoughts during walks, commutes, and moments of focus.</p>
+                <div class="capture-stage">
+                    <div class="page-intro">
+                        <h2>Capture your thoughts.</h2>
+                        <p class="subtitle">Voice notes organized by location, topics, and time.</p>
                     </div>
 
-                    <!-- 3D Audio Orb Visualizer Stage -->
-                    <div class="orb-visualizer-container">
-                        <div id="threeOrbCanvas" class="three-orb-stage"></div>
+                    <!-- Clean 3D Audio Visualizer Card -->
+                    <div class="recorder-card">
+                        <div id="threeOrbCanvas" class="three-stage-canvas"></div>
                         
-                        <!-- Floating Record Control Overlay -->
-                        <div class="orb-control-overlay">
-                            <button id="recordBtn" class="cosmic-record-btn" aria-label="Toggle Voice Capture">
+                        <div class="recorder-controls">
+                            <button id="recordBtn" class="record-action-btn" aria-label="Record voice note">
                                 <div class="pulse-ring"></div>
-                                <div class="btn-inner">
-                                    <svg class="mic-svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
-                                    <span class="stop-icon"></span>
+                                <div class="btn-core">
+                                    <svg class="mic-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                                    <span class="stop-box"></span>
                                 </div>
                             </button>
                             
-                            <div class="recording-telemetry">
-                                <div id="recordStatus" class="telemetry-status">Tap Orb to begin recording</div>
-                                <div id="timer" class="telemetry-timer" style="display:none">00:00</div>
-                                <div id="locationBadge" class="telemetry-badge">
+                            <div class="record-meta">
+                                <div id="recordStatus" class="record-status-text">Tap to record a voice note</div>
+                                <div id="timer" class="record-timer-text" style="display:none">00:00</div>
+                                <div id="locationBadge" class="record-location-pill">
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/><circle cx="12" cy="10" r="3"/></svg>
-                                    <span>Acquiring GPS...</span>
+                                    <span>Palo Alto, CA</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Quick Text Input Fallback -->
-                    <div class="text-capture-bar">
-                        <input type="text" id="textThoughtInput" placeholder="Or type a thought to capture..." autocomplete="off">
-                        <button id="textThoughtSubmit" class="text-submit-btn">Save Thought</button>
+                    <!-- Quick Text Fallback Input -->
+                    <div class="quick-text-box">
+                        <input type="text" id="textThoughtInput" placeholder="Or type a quick note..." autocomplete="off">
+                        <button id="textThoughtSubmit" class="quick-submit-btn">Save</button>
                     </div>
 
-                    <!-- Processing State Indicator -->
-                    <div id="processing" class="processing-glass-card" style="display:none">
-                        <div class="cosmic-spinner"></div>
-                        <div class="processing-copy">
-                            <h4>Processing Thought...</h4>
-                            <p>Scribing transcript, computing vector embeddings & linking past patterns in sub-2s...</p>
+                    <!-- Processing State -->
+                    <div id="processing" class="card processing-banner" style="display:none">
+                        <div class="loading-spinner"></div>
+                        <div class="processing-info">
+                            <h4>Transcribing note...</h4>
+                            <p>Organizing key points and connecting with past notes...</p>
                         </div>
                     </div>
 
-                    <!-- Live Scribe Result Card -->
-                    <div id="latestThought" class="glass-result-card" style="display:none">
-                        <div class="result-card-header">
-                            <div class="result-title-group">
-                                <span class="card-kicker">Episodic Memory Captured</span>
+                    <!-- Thought Result Card -->
+                    <div id="latestThought" class="card result-card" style="display:none">
+                        <div class="result-top">
+                            <div class="result-title-area">
+                                <span class="tag-label">Note Saved</span>
                                 <h3 id="resultSummary"></h3>
                             </div>
-                            <div class="result-meta-tags">
-                                <span id="resultMoodBadge" class="meta-pill"></span>
-                                <span id="resultTimeLocation" class="meta-pill meta-mono"></span>
+                            <div class="result-meta-area">
+                                <span id="resultMoodBadge" class="badge"></span>
+                                <span id="resultTimeLocation" class="badge badge-light"></span>
                             </div>
                         </div>
 
-                        <div class="result-body-grid">
-                            <div class="result-block transcript-block">
-                                <span class="block-label">Verbatim Transcript</span>
-                                <p id="resultTranscript"></p>
+                        <div class="result-details">
+                            <div class="detail-section">
+                                <label>Transcript</label>
+                                <blockquote id="resultTranscript"></blockquote>
                             </div>
-                            <div class="result-block topics-block">
-                                <span class="block-label">Semantic Topics</span>
-                                <div id="resultTopics" class="pill-group"></div>
+                            <div class="detail-section">
+                                <label>Topics</label>
+                                <div id="resultTopics" class="tags-row"></div>
                             </div>
-                            <div class="result-block insights-block full-width">
-                                <span class="block-label">Key Deductions & Decisions</span>
-                                <ul id="resultInsights" class="insights-list"></ul>
+                            <div class="detail-section full-width">
+                                <label>Key Takeaways</label>
+                                <ul id="resultInsights" class="bullet-list"></ul>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Autonomous Connector Pattern Panel -->
-                    <div id="connectorInsights" class="connector-glass-panel" style="display:none">
-                        <div class="panel-header">
-                            <div class="panel-icon">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00f2fe" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
-                            </div>
-                            <div>
-                                <h4>Connector Synthesis</h4>
-                                <span class="panel-sub">Linked across multi-week episodic memory</span>
-                            </div>
+                    <!-- Connected Thoughts Banner -->
+                    <div id="connectorInsights" class="card connections-card" style="display:none">
+                        <div class="card-heading">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
+                            <h4>Connected Thoughts</h4>
                         </div>
-                        <div id="connectorContent" class="connector-content-body"></div>
+                        <div id="connectorContent" class="connections-body"></div>
                     </div>
                 </div>
             </section>
 
-            <!-- 🗺️ 2. MIND TRAIL TAB (Radar Map) -->
+            <!-- 🗺️ 2. MAP TAB -->
             <section id="mapTab" class="tab-view">
-                <div class="view-header">
+                <div class="page-intro-row">
                     <div>
-                        <h2>Spatio-Temporal Mind Trail</h2>
-                        <p class="subtitle">Geographic trajectory of your walking thoughts across Northern California.</p>
+                        <h2>Walk Map</h2>
+                        <p class="subtitle">Places and paths where your thoughts were recorded.</p>
                     </div>
-                    <div class="legend-bar">
-                        <div class="legend-item"><span class="legend-dot dot-tech"></span> Technology</div>
-                        <div class="legend-item"><span class="legend-dot dot-work"></span> Leadership</div>
-                        <div class="legend-item"><span class="legend-dot dot-family"></span> Family</div>
-                        <div class="legend-item"><span class="legend-dot dot-health"></span> Wellness</div>
+                    <div class="category-legend">
+                        <div class="legend-chip"><span class="chip-color color-blue"></span> Tech</div>
+                        <div class="legend-chip"><span class="chip-color color-green"></span> Work</div>
+                        <div class="legend-chip"><span class="chip-color color-amber"></span> Family</div>
+                        <div class="legend-chip"><span class="chip-color color-coral"></span> Wellness</div>
                     </div>
                 </div>
 
-                <div class="map-viewport-glass">
-                    <div id="thoughtMap" class="leaflet-map-canvas"></div>
+                <div class="card map-frame">
+                    <div id="thoughtMap" class="leaflet-canvas"></div>
                 </div>
             </section>
 
-            <!-- 🕸️ 3. 3D NEURAL SPACE TAB (Three.js 3D Galaxy) -->
+            <!-- 🕸️ 3. CONNECTIONS GRAPH TAB -->
             <section id="graphTab" class="tab-view">
-                <div class="view-header">
+                <div class="page-intro-row">
                     <div>
-                        <h2>3D Neural Knowledge Space</h2>
-                        <p class="subtitle">Living multi-week constellation: Themes, Semantic Links & Evolving Perspectives.</p>
+                        <h2>Connections</h2>
+                        <p class="subtitle">Interactive view of your ideas, themes, and how thoughts connect.</p>
                     </div>
-                    <div class="graph-toolbar">
-                        <button id="resetGraphBtn" class="glass-action-btn">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                            <span>Center Camera</span>
-                        </button>
-                    </div>
+                    <button id="resetGraphBtn" class="secondary-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                        <span>Center View</span>
+                    </button>
                 </div>
 
-                <div class="graph-viewport-glass">
-                    <div id="neural3DGraph" class="force-graph-canvas"></div>
-                    <div class="graph-instructions-badge">
-                        <span>Left Click: Rotate · Scroll: Zoom · Click Node: Inspect Memory</span>
+                <div class="card graph-frame">
+                    <div id="neural3DGraph" class="three-graph-canvas"></div>
+                    <div class="graph-hint">
+                        <span>Click and drag to rotate · Scroll to zoom · Click any node to open note</span>
                     </div>
                 </div>
             </section>
 
             <!-- 💭 4. TIMELINE TAB -->
             <section id="thoughts" class="tab-view">
-                <div class="view-header">
+                <div class="page-intro-row">
                     <div>
-                        <h2>Thought Chronology</h2>
-                        <p class="subtitle">Episodic stream with full semantic vector indexing.</p>
+                        <h2>All Notes</h2>
+                        <p class="subtitle">Chronological archive with search.</p>
                     </div>
-                    <div class="glass-search-box">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                        <input type="text" id="searchInput" placeholder="Search ideas, places, or topics...">
-                        <button id="searchBtn" class="search-submit-btn">Search</button>
+                    <div class="search-bar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                        <input type="text" id="searchInput" placeholder="Search notes, topics, or places...">
+                        <button id="searchBtn" class="search-btn">Search</button>
                     </div>
                 </div>
 
-                <div id="thoughtsList" class="timeline-grid">
-                    <div class="empty-state-glass">Loading thought archive...</div>
+                <div id="thoughtsList" class="notes-grid">
+                    <div class="empty-state">Loading notes...</div>
                 </div>
             </section>
 
             <!-- 🔗 5. PATTERNS TAB -->
             <section id="patterns" class="tab-view">
-                <div class="view-header">
+                <div class="page-intro-row">
                     <div>
-                        <h2>Long-Horizon Pattern Synthesis</h2>
-                        <p class="subtitle">Multi-agent extraction of recurring themes, emotional trajectories, and behavioral habits.</p>
+                        <h2>Patterns & Themes</h2>
+                        <p class="subtitle">Recurring topics, habits, and trends across your recent notes.</p>
                     </div>
-                    <button id="analyzeBtn" class="glass-primary-btn">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
-                        <span>Analyze My Thinking</span>
+                    <button id="analyzeBtn" class="primary-btn">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="m13 13 6 6"/></svg>
+                        <span>Analyze Notes</span>
                     </button>
                 </div>
 
-                <div id="patternsResult" class="patterns-dashboard-glass">
-                    <div class="empty-state-glass">Click "Analyze My Thinking" to extract high-order patterns across your multi-week walk history.</div>
+                <div id="patternsResult" class="patterns-container">
+                    <div class="empty-state">Click "Analyze Notes" to review recurring themes and trends across your recordings.</div>
                 </div>
             </section>
 
-            <!-- 💬 6. ORACLE CHAT TAB -->
+            <!-- 💬 6. ASK CHAT TAB -->
             <section id="chat" class="tab-view">
-                <div class="chat-layout-glass">
-                    <div class="chat-header-bar">
-                        <div class="chat-title-info">
-                            <h3>Oracle Thinking Partner</h3>
-                            <span class="chat-status-sub">Grounded across 19+ episodic memories & durable themes</span>
+                <div class="card chat-card">
+                    <div class="chat-header">
+                        <div>
+                            <h3>Ask Your Notes</h3>
+                            <p class="chat-sub">Search and ask questions across your recorded thoughts.</p>
                         </div>
                     </div>
 
-                    <div id="chatMessages" class="chat-dialog-stream">
+                    <div id="chatMessages" class="chat-thread">
                         <div class="chat-bubble assistant">
                             <div class="bubble-avatar">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00f2fe" stroke-width="2"><path d="M12 2L14.5 8.5L21 11L14.5 13.5L12 20L9.5 13.5L3 11L9.5 8.5L12 2Z"/></svg>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
                             </div>
-                            <div class="bubble-content">
-                                <p>I am your ThoughtStash Oracle. I hold the complete chronological map of your thoughts from your walks across the Bay Area. Ask me anything, or try one of these prompts below:</p>
-                                <div class="chat-prompt-chips">
-                                    <button class="prompt-chip" data-prompt="What were my ideas on AI agent memory and architecture?">AI Agent Memory</button>
-                                    <button class="prompt-chip" data-prompt="What did I plan for my parents' 40th anniversary?">Parents' Anniversary</button>
-                                    <button class="prompt-chip" data-prompt="What are my reflections on birthday parties and family events?">Birthday Reflections</button>
+                            <div class="bubble-body">
+                                <p>Hi! I can help you search and recall ideas from your walks. Here are a few questions you can try:</p>
+                                <div class="prompt-chips-row">
+                                    <button class="prompt-chip" data-prompt="What were my ideas about AI agents and memory?">AI agent ideas</button>
+                                    <button class="prompt-chip" data-prompt="What did I plan for my parents' 40th anniversary?">Parents' anniversary</button>
+                                    <button class="prompt-chip" data-prompt="What have I noted about hydration and walking habits?">Walking & health</button>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="chat-composer-bar">
-                        <input type="text" id="chatInput" placeholder="Ask about your past thoughts, locations, or connections..." autocomplete="off">
-                        <button id="chatSendBtn" class="chat-send-action" aria-label="Send Message">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    <div class="chat-input-bar">
+                        <input type="text" id="chatInput" placeholder="Ask about past ideas, places, or notes..." autocomplete="off">
+                        <button id="chatSendBtn" class="chat-send-btn" aria-label="Send">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                         </button>
                     </div>
                 </div>
@@ -307,40 +283,40 @@
         </main>
     </div>
 
-    <!-- Universal Slide-In Thought Inspector Drawer (accessible from Map, 3D Graph & Timeline) -->
-    <div id="thoughtInspectorDrawer" class="thought-inspector-backdrop" style="display:none">
-        <div class="inspector-panel-glass">
-            <div class="inspector-header">
-                <div class="inspector-category-badge" id="inspectorCategoryBadge">
-                    <span class="category-indicator"></span>
-                    <span id="inspectorCategoryText">Technology</span>
+    <!-- Slide-In Note Detail Drawer -->
+    <div id="thoughtInspectorDrawer" class="drawer-backdrop" style="display:none">
+        <div class="drawer-panel">
+            <div class="drawer-header">
+                <div class="category-tag" id="inspectorCategoryBadge">
+                    <span class="dot"></span>
+                    <span id="inspectorCategoryText">Tech</span>
                 </div>
-                <button id="closeInspectorBtn" class="close-drawer-btn" aria-label="Close Inspector">
+                <button id="closeInspectorBtn" class="drawer-close-btn" aria-label="Close">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
                 </button>
             </div>
 
-            <div class="inspector-scroll-body">
-                <div class="inspector-meta-row">
-                    <span id="inspectorDate" class="mono-tag"></span>
-                    <span id="inspectorLocation" class="mono-tag loc-tag"></span>
+            <div class="drawer-content">
+                <div class="drawer-meta">
+                    <span id="inspectorDate" class="meta-item"></span>
+                    <span id="inspectorLocation" class="meta-item meta-loc"></span>
                 </div>
 
-                <h2 id="inspectorTitle" class="inspector-title"></h2>
+                <h2 id="inspectorTitle" class="drawer-title"></h2>
 
-                <div class="inspector-section">
-                    <label class="section-kicker">Transcript</label>
-                    <blockquote id="inspectorTranscript" class="inspector-quote"></blockquote>
+                <div class="drawer-section">
+                    <label>Transcript</label>
+                    <blockquote id="inspectorTranscript" class="quote-box"></blockquote>
                 </div>
 
-                <div class="inspector-section">
-                    <label class="section-kicker">Topics & Entities</label>
-                    <div id="inspectorTopics" class="pill-group"></div>
+                <div class="drawer-section">
+                    <label>Topics</label>
+                    <div id="inspectorTopics" class="tags-row"></div>
                 </div>
 
-                <div class="inspector-section" id="inspectorInsightsSection">
-                    <label class="section-kicker">Key Insights</label>
-                    <ul id="inspectorInsightsList" class="insights-list"></ul>
+                <div class="drawer-section" id="inspectorInsightsSection">
+                    <label>Key Points</label>
+                    <ul id="inspectorInsightsList" class="bullet-list"></ul>
                 </div>
             </div>
         </div>
