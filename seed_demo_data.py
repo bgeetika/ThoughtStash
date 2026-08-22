@@ -668,6 +668,366 @@ DEMO_THOUGHTS = [
         "latitude": 37.4280,
         "longitude": -122.0830,
         "location_name": "Shoreline Lake Park, Mountain View, CA"
+    },
+    {
+        "created_at": "2025-08-25T09:15:00Z",
+        "transcript": "Standing over Emerald Bay looking at Fannette Island. Why do note-taking apps force us to sit at a keyboard? The most honest, uninhibited thoughts come when you're hiking a ridge or looking at water. Voice-first capture while moving is going to replace standard text editors for early-stage idea synthesis.",
+        "summary": "Seed realization at Lake Tahoe that rhythmic outdoor movement unlocks more authentic, uninhibited thought capture than desktop keyboards.",
+        "topics": ["voice-first", "Lake Tahoe", "ideation", "product vision", "human cognition"],
+        "entities": ["Emerald Bay", "Voice Capture", "Lake Tahoe"],
+        "mood": "inspired",
+        "key_insights": ["Physical movement outdoors removes cognitive inhibition and accelerates early-stage idea synthesis."],
+        "thought_type": "idea",
+        "urgency": "medium",
+        "implicit_questions": ["How do we design a zero-friction mobile interface that requires zero screen interaction while walking?"],
+        "latitude": 38.9540,
+        "longitude": -120.0980,
+        "location_name": "Emerald Bay State Park, Lake Tahoe, CA"
+    },
+    {
+        "created_at": "2025-09-14T17:40:00Z",
+        "transcript": "Watching the hawks catch the thermal updrafts above the Golden Gate. In AI developer tooling, everyone is obsessing over writing more boilerplate code with autocomplete. But the real bottleneck in engineering isn't typing speed; it's architectural clarity and keeping long-term system invariants in mind.",
+        "summary": "Reflecting on AI developer tooling and noting that cognitive architecture clarity matters far more than raw typing speed.",
+        "topics": ["developer tools", "AI coding", "software architecture", "engineering"],
+        "entities": ["Hawk Hill", "Marin Headlands", "AI Tooling"],
+        "mood": "focused",
+        "key_insights": ["System architecture clarity and invariant preservation provide 10x higher leverage than code autocomplete."],
+        "thought_type": "reflection",
+        "urgency": "low",
+        "implicit_questions": ["How can AI tools help engineers maintain architectural constraints across multi-year repositories?"],
+        "latitude": 37.8258,
+        "longitude": -122.4994,
+        "location_name": "Hawk Hill, Marin Headlands, Sausalito, CA"
+    },
+    {
+        "created_at": "2025-09-28T11:20:00Z",
+        "transcript": "Took Ananya to see the river otters and aviary. She was fascinated by how birds navigate thousands of miles back to the exact same tree branch every spring. Biological spatial memory is so vastly superior to our clumsy coordinate lookup systems.",
+        "summary": "Observing avian navigation at the Palo Alto Junior Museum with Ananya and pondering biological spatial memory.",
+        "topics": ["family", "Ananya", "spatial memory", "nature", "biology"],
+        "entities": ["Ananya", "Junior Museum", "Palo Alto"],
+        "mood": "warm",
+        "key_insights": ["Biological spatial memory integrates sensory landmarks with emotional significance, far outperforming geometric coordinates."],
+        "thought_type": "observation",
+        "urgency": "low",
+        "implicit_questions": ["Can we model spatial memory in AI using landmark embeddings rather than raw lat/long coordinates?"],
+        "latitude": 37.4335,
+        "longitude": -122.1380,
+        "location_name": "Junior Museum & Zoo, Palo Alto, CA"
+    },
+    {
+        "created_at": "2025-10-12T08:00:00Z",
+        "transcript": "Crisp autumn morning above the cloud layer on Skyline Boulevard. Morning fog is blanketing the entire valley below. My goal for Q4 is to protect my first 90 minutes of every day for zero-distraction deep thinking before opening email or chat.",
+        "summary": "Committing to a strict morning 90-minute distraction-free deep work routine during an autumn hike on Skyline.",
+        "topics": ["deep work", "morning routine", "focus", "mindfulness", "Russian Ridge"],
+        "entities": ["Skyline Boulevard", "Russian Ridge"],
+        "mood": "serene",
+        "key_insights": ["Shielding the first 90 minutes of the morning from communication tools doubles daily high-leverage intellectual output."],
+        "thought_type": "decision",
+        "urgency": "medium",
+        "implicit_questions": ["What automated rules can mute morning notifications while preserving true emergency escalations?"],
+        "latitude": 37.3225,
+        "longitude": -122.2045,
+        "location_name": "Russian Ridge Preserve, Redwood City, CA"
+    },
+    {
+        "created_at": "2025-10-26T18:30:00Z",
+        "transcript": "Walking Lincoln Avenue with family checking out the elaborate Halloween decorations. The whole community comes out and talks to each other. We need more physical community traditions that bring neighbors out onto the sidewalk.",
+        "summary": "Appreciating the vibrant community connection during an evening Halloween walk through Willow Glen with family.",
+        "topics": ["community", "family", "neighborhood", "Willow Glen", "Halloween"],
+        "entities": ["Willow Glen", "Lincoln Ave", "Family"],
+        "mood": "joyful",
+        "key_insights": ["Walkable neighborhood traditions build organic social capital that digital networks cannot replicate."],
+        "thought_type": "observation",
+        "urgency": "low",
+        "implicit_questions": ["How can local neighborhood associations foster more pedestrian street festivals year-round?"],
+        "latitude": 37.3050,
+        "longitude": -121.8950,
+        "location_name": "Lincoln Ave, Willow Glen, San Jose, CA"
+    },
+    {
+        "created_at": "2025-11-08T15:20:00Z",
+        "transcript": "Walking past SLAC after a long design review. Everyone wants LLMs to have an infinite context window, but humans don't have infinite context — we have lossy compression with episodic anchors. An agent that remembers every single raw token will choke on noise. True intelligence is knowing what to discard.",
+        "summary": "Formulating the core thesis that effective AI memory requires selective episodic compression rather than raw infinite token context.",
+        "topics": ["context compression", "AI memory", "episodic memory", "cognitive science"],
+        "entities": ["SLAC", "Episodic Anchors", "Memory Compression"],
+        "mood": "analytical",
+        "key_insights": ["Selective episodic summarization prevents context degradation and enables continuous multi-month agent reasoning."],
+        "thought_type": "idea",
+        "urgency": "high",
+        "implicit_questions": ["What loss function balances compression ratio against factual retention?"],
+        "latitude": 37.4180,
+        "longitude": -122.2050,
+        "location_name": "SLAC Trail, Menlo Park, CA"
+    },
+    {
+        "created_at": "2025-11-27T16:45:00Z",
+        "transcript": "Thanksgiving walk along the Carmel lagoon. Mom and Dad joined for an easy stroll along the sand spit. Mom mentioned their 40th anniversary is coming up next August. Made a mental note right then: let's plan something extraordinary for them next summer right here on the Monterey coast.",
+        "summary": "Thanksgiving stroll in Carmel where the initial spark for Mom and Dad's 40th anniversary celebration was first conceived.",
+        "topics": ["family", "Thanksgiving", "Carmel", "anniversary origin", "Mom and Dad"],
+        "entities": ["Mom & Dad", "Carmel River Beach", "40th Anniversary"],
+        "mood": "grateful",
+        "key_insights": ["Planting celebration ideas months in advance allows for thoughtful, low-stress itinerary crafting."],
+        "thought_type": "reflection",
+        "urgency": "low",
+        "implicit_questions": ["Which oceanside resorts in Carmel offer accessible beach access for older family members?"],
+        "latitude": 36.5385,
+        "longitude": -121.9280,
+        "location_name": "Carmel River State Beach, Carmel, CA"
+    },
+    {
+        "created_at": "2025-12-14T09:00:00Z",
+        "transcript": "Looking out over the entire 360-degree panorama of the Bay under winter sun. Year-end retrospective: the quarters where I focused on 1 core thesis yielded 10x more progress than the quarters where I spread across 5 disparate projects. Carrying this ruthless simplicity into 2026.",
+        "summary": "Annual strategic reflection at Twin Peaks resolving to maintain singular thesis focus over fragmented project spreading in 2026.",
+        "topics": ["annual retro", "focus", "strategy", "Twin Peaks", "year-end"],
+        "entities": ["Twin Peaks", "2026 Strategy"],
+        "mood": "resolute",
+        "key_insights": ["Singular strategic focus yields non-linear breakthroughs, whereas multi-project fragmentation creates illusion of progress."],
+        "thought_type": "reflection",
+        "urgency": "high",
+        "implicit_questions": ["What is my primary North Star hypothesis for H1 2026?"],
+        "latitude": 37.7544,
+        "longitude": -122.4477,
+        "location_name": "Twin Peaks Summit, San Francisco, CA"
+    },
+    {
+        "created_at": "2025-12-24T19:30:00Z",
+        "transcript": "Christmas Eve walk under the palms and fairy lights. Picked up chocolates for the family dinner tomorrow. Grateful for a healthy family and a clear mind. The quiet days between Christmas and New Years are the best time for creative wandering.",
+        "summary": "Christmas Eve stroll with family reflecting on gratitude, health, and the creative value of holiday quietude.",
+        "topics": ["family", "holidays", "gratitude", "Santana Row", "wellbeing"],
+        "entities": ["Santana Row", "Family Holiday Dinner"],
+        "mood": "peaceful",
+        "key_insights": ["Unstructured holiday downtime is when the subconscious resolves complex year-long architectural questions."],
+        "thought_type": "reflection",
+        "urgency": "low",
+        "implicit_questions": ["How to protect creative thinking time as the new calendar year begins?"],
+        "latitude": 37.3200,
+        "longitude": -121.9480,
+        "location_name": "Santana Row, San Jose, CA"
+    },
+    {
+        "created_at": "2026-01-05T07:45:00Z",
+        "transcript": "First sunrise hike of 2026. Starting my 3-liter daily water challenge and daily 30-minute outdoor walk rule. If I can maintain physical vitality and sleep consistency, the engineering work flows effortlessly.",
+        "summary": "Establishing the baseline 2026 wellness habits: daily 3-liter hydration and 30-minute nature walks.",
+        "topics": ["hydration habits", "New Year goals", "morning walk", "wellness", "habit tracking"],
+        "entities": ["Stanford Dish", "2026 Wellness Routine"],
+        "mood": "energized",
+        "key_insights": ["Consistent hydration and daily morning sunlight set circadian rhythms that power all-day mental focus."],
+        "thought_type": "decision",
+        "urgency": "medium",
+        "implicit_questions": ["How to track hydration seamlessly without burdensome manual logging apps?"],
+        "latitude": 37.4200,
+        "longitude": -122.1830,
+        "location_name": "Stanford Dish Trail, Palo Alto, CA"
+    },
+    {
+        "created_at": "2026-01-18T14:15:00Z",
+        "transcript": "Saturday afternoon by the bay. In our Q1 agent prototypes, streaming token-by-token JSON schema validation is preventing corrupt UI states. When building agent UI, always fail fast on schema violations before rendering half-baked cards.",
+        "summary": "Architectural standard for real-time streaming JSON schema validation in agent user interfaces.",
+        "topics": ["JSON schema", "streaming AI", "system architecture", "robustness"],
+        "entities": ["Ferry Building", "Streaming JSON Validator"],
+        "mood": "analytical",
+        "key_insights": ["Strict incremental schema validation on token streams prevents broken UI rendering during LLM generation."],
+        "thought_type": "decision",
+        "urgency": "medium",
+        "implicit_questions": ["What parser library handles partial JSON chunks with minimal CPU overhead?"],
+        "latitude": 37.7950,
+        "longitude": -122.3930,
+        "location_name": "Embarcadero Ferry Plaza, San Francisco, CA"
+    },
+    {
+        "created_at": "2026-02-03T18:10:00Z",
+        "transcript": "Sunset over the salt marshes. Team velocity was dragging this week because of 14 flaky integration tests that randomly failed on CI. Paused feature merges and spent 2 days fixing the test hermeticity. Flaky tests destroy developer confidence faster than bugs.",
+        "summary": "Halting feature development to eliminate flaky CI integration tests and restore developer deployment confidence.",
+        "topics": ["testing", "CI/CD", "engineering velocity", "code quality", "flaky tests"],
+        "entities": ["CI Pipeline", "Shoreline Marshes"],
+        "mood": "determined",
+        "key_insights": ["A zero-tolerance policy for flaky tests protects team velocity and code review trust."],
+        "thought_type": "decision",
+        "urgency": "high",
+        "implicit_questions": ["How can we auto-quarantine newly introduced flaky tests before they merge to main?"],
+        "latitude": 37.4270,
+        "longitude": -122.0800,
+        "location_name": "Shoreline Amphitheatre Trail, Mountain View, CA"
+    },
+    {
+        "created_at": "2026-02-15T12:30:00Z",
+        "transcript": "Walking past the houseboats in Sausalito looking back at the SF skyline. The salty ocean air completely resets mental fatigue. Need to build more weekend micro-adventures within a 45-minute drive of home.",
+        "summary": "Recharging mental stamina on the Sausalito waterfront and prioritizing regular weekend outdoor micro-trips.",
+        "topics": ["micro-adventures", "mental health", "Sausalito", "wellbeing", "nature"],
+        "entities": ["Sausalito Houseboats", "San Francisco Bay"],
+        "mood": "rejuvenated",
+        "key_insights": ["Short, novel geographic escapes within driving distance produce the same cognitive recharge as week-long vacations."],
+        "thought_type": "observation",
+        "urgency": "low",
+        "implicit_questions": ["What other scenic coastal bays in Marin are accessible for quick half-day trips?"],
+        "latitude": 37.8590,
+        "longitude": -122.4850,
+        "location_name": "Waterfront Promenade, Sausalito, CA"
+    },
+    {
+        "created_at": "2026-03-01T09:40:00Z",
+        "transcript": "Spring wildflowers are starting to bloom across the hills. Watching wild turkeys graze. When people capture voice notes, speech recognition is only step one. The real intelligence is semantic clustering across time — grouping ideas by underlying concept rather than exact spoken words.",
+        "summary": "Observing early spring wildflowers at Rancho San Antonio and defining semantic temporal clustering for voice memory.",
+        "topics": ["semantic clustering", "voice AI", "ThoughtStash", "Rancho San Antonio", "concept graphs"],
+        "entities": ["Rancho San Antonio", "Semantic Clustering"],
+        "mood": "inspired",
+        "key_insights": ["Concept clustering abstracts verbatim transcripts into durable intellectual themes that evolve over months."],
+        "thought_type": "idea",
+        "urgency": "high",
+        "implicit_questions": ["What cosine similarity threshold best balances cluster granularity against fragmentation?"],
+        "latitude": 37.3330,
+        "longitude": -122.0870,
+        "location_name": "Meadow Trail, Rancho San Antonio, Cupertino, CA"
+    },
+    {
+        "created_at": "2026-03-15T16:00:00Z",
+        "transcript": "Watched Ananya perform in her spring school musical. She was so proud of remembering all her lines and smiled the entire time on stage. These milestone family memories are what really matter at the end of the day.",
+        "summary": "Celebrating Ananya's spring musical performance and cherishing childhood milestone memories with family.",
+        "topics": ["family", "Ananya", "school performance", "milestones", "gratitude"],
+        "entities": ["Ananya", "Spring Musical", "Cupertino"],
+        "mood": "joyful",
+        "key_insights": ["Showing up consistently for children's milestone moments builds irreplaceable lifelong emotional security."],
+        "thought_type": "observation",
+        "urgency": "low",
+        "implicit_questions": ["How can we archive family video clips with searchable audio transcripts?"],
+        "latitude": 37.3190,
+        "longitude": -122.0460,
+        "location_name": "Flint Center, Cupertino, CA"
+    },
+    {
+        "created_at": "2026-03-29T08:15:00Z",
+        "transcript": "The orange California poppies are everywhere on the ridge. Noticed that whenever I go 3 days without a 5-mile hike, my tolerance for meeting ambiguity plummets. Physical endurance outdoors directly buffers emotional resilience at work.",
+        "summary": "Discovering the direct link between weekly trail mileage and emotional resilience in high-ambiguity work environments.",
+        "topics": ["mental resilience", "hiking", "endurance", "poppies", "Russian Ridge"],
+        "entities": ["California Poppies", "Russian Ridge"],
+        "mood": "serene",
+        "key_insights": ["Outdoor trail endurance provides a direct neurological buffer against workplace stress and decision fatigue."],
+        "thought_type": "reflection",
+        "urgency": "low",
+        "implicit_questions": ["How can I schedule recurring Tuesday & Thursday trail blocks directly into my team calendar?"],
+        "latitude": 37.3230,
+        "longitude": -122.2030,
+        "location_name": "Wildflower Ridge, Russian Ridge, Redwood City, CA"
+    },
+    {
+        "created_at": "2026-04-11T17:30:00Z",
+        "transcript": "The turquoise cove and waterfall dropping directly onto the beach. Driving Highway 1 today to scout the route for Mom and Dad's trip in August. Confirmed: the section between Carmel and Big Sur is breathtaking, but we should make sure to drive slowly and stop at flat viewpoints.",
+        "summary": "Scouting the Big Sur coastal route in April in preparation for parents' 40th anniversary August visit.",
+        "topics": ["Big Sur", "scouting trip", "family planning", "coastal drive", "parents visit"],
+        "entities": ["McWay Falls", "Highway 1", "Mom & Dad"],
+        "mood": "awe",
+        "key_insights": ["Pre-driving vacation routes verifies trail accessibility and prevents navigation surprises for older guests."],
+        "thought_type": "decision",
+        "urgency": "medium",
+        "implicit_questions": ["Which pullouts along Highway 1 have paved ADA-accessible viewpoints?"],
+        "latitude": 36.1575,
+        "longitude": -121.6720,
+        "location_name": "McWay Falls Overlook, Big Sur, CA"
+    },
+    {
+        "created_at": "2026-04-22T13:00:00Z",
+        "transcript": "Lunchtime walk past the Computer History Museum. Looked at the early DEC and Cray supercomputer photos. We've gone from room-sized machines doing 100 FLOPS to running 3-billion-parameter neural networks locally in our pockets. Edge AI is the final democratization of computing.",
+        "summary": "Reflecting on computing history and the democratization of edge intelligence running locally on personal devices.",
+        "topics": ["computing history", "edge AI", "small models", "hardware", "technology"],
+        "entities": ["Computer History Museum", "Edge Neural Networks"],
+        "mood": "fascinated",
+        "key_insights": ["The migration of model inference from cloud data centers to on-device silicon guarantees user privacy and offline agency."],
+        "thought_type": "reflection",
+        "urgency": "low",
+        "implicit_questions": ["What quantization formats preserve semantic nuance on 3B models?"],
+        "latitude": 37.4147,
+        "longitude": -122.0774,
+        "location_name": "Computer History Museum, Mountain View, CA"
+    },
+    {
+        "created_at": "2026-05-03T10:15:00Z",
+        "transcript": "Ferry ride and loop hike around Angel Island. Cool Pacific wind. If an engineering team has more than 8 people working on a single microservice, communication overhead grows as O(N^2). We need to split the team into two autonomous four-person squads for Q3.",
+        "summary": "Applying two-pizza team organizational principles to split a large service team into autonomous squads.",
+        "topics": ["org design", "team scaling", "communication overhead", "engineering management"],
+        "entities": ["Angel Island", "Two-Pizza Team Rule"],
+        "mood": "resolute",
+        "key_insights": ["Capping team size at 4-5 engineers per domain boundary minimizes coordination tax and accelerates ship velocity."],
+        "thought_type": "decision",
+        "urgency": "high",
+        "implicit_questions": ["What API contract interfaces best separate the ingestion squad from the graph indexing squad?"],
+        "latitude": 37.8630,
+        "longitude": -122.4330,
+        "location_name": "Perimeter Trail, Angel Island, CA"
+    },
+    {
+        "created_at": "2026-05-18T18:45:00Z",
+        "transcript": "Post-offsite walk along the fishing docks. Watched the sea lions barking on the buoys. Everyone on the leadership team agreed: ThoughtStash needs to feel like an ambient companion that captures thoughts on the go, not a heavy desktop productivity tool.",
+        "summary": "Gaining executive consensus on the ambient mobile-first product identity of ThoughtStash at the Half Moon Bay offsite.",
+        "topics": ["product vision", "ThoughtStash", "ambient computing", "leadership offsite"],
+        "entities": ["Pillar Point Harbor", "Exec Offsite"],
+        "mood": "confident",
+        "key_insights": ["Positioning ThoughtStash as an ambient thought capture tool rather than a wiki note database differentiates the product completely."],
+        "thought_type": "decision",
+        "urgency": "high",
+        "implicit_questions": ["What mobile gesture provides the lowest friction trigger for one-handed voice capture while walking?"],
+        "latitude": 37.4990,
+        "longitude": -122.4840,
+        "location_name": "Pillar Point Harbor, Half Moon Bay, CA"
+    },
+    {
+        "created_at": "2026-05-30T09:30:00Z",
+        "transcript": "Farm trail past the organic pastures. Consistent morning hydration and 10k steps before noon have made my mental focus unshakeable over the last 5 months. It's astonishing how much intellectual performance depends on basic bodily upkeep.",
+        "summary": "Five-month milestone reflection on how foundational hydration and daily movement habits elevate cognitive stamina.",
+        "topics": ["habit tracking", "hydration", "cognitive performance", "Hidden Villa", "mindfulness"],
+        "entities": ["Hidden Villa", "Daily Steps Milestone"],
+        "mood": "content",
+        "key_insights": ["High intellectual performance is a downstream byproduct of regular physical movement, sunlight, and clean hydration."],
+        "thought_type": "reflection",
+        "urgency": "low",
+        "implicit_questions": ["How can I help team members recognize when their burnout is simply chronic dehydration and lack of daylight?"],
+        "latitude": 37.3520,
+        "longitude": -122.1580,
+        "location_name": "Hidden Villa Trail, Los Altos Hills, CA"
+    },
+    {
+        "created_at": "2026-06-12T19:15:00Z",
+        "transcript": "Flew a giant rainbow kite with Ananya and my brother. The wind was steady and strong off the bay. Seeing her run across the grass laughing made all the week's work stress completely evaporate.",
+        "summary": "Flying kites at Shoreline Lake with Ananya and experiencing the stress-relieving power of family joy.",
+        "topics": ["family", "Ananya", "Shoreline Lake", "kite flying", "joy"],
+        "entities": ["Ananya", "Shoreline Lake Park"],
+        "mood": "joyful",
+        "key_insights": ["Shared outdoor play with children provides instant nervous system reset after demanding engineering sprints."],
+        "thought_type": "observation",
+        "urgency": "low",
+        "implicit_questions": ["What other weekend outdoor activities can we do together as the summer weather warms up?"],
+        "latitude": 37.4310,
+        "longitude": -122.0860,
+        "location_name": "Kite Flying Area, Shoreline Lake, Mountain View, CA"
+    },
+    {
+        "created_at": "2026-06-21T07:00:00Z",
+        "transcript": "Summer solstice sunrise walk. Longest day of the year. Golden hills glowing in the early morning light. Halfway through 2026: we have a working voice scribe and initial graph clustering. H2 goal is building the proactive associative memory layer that links past and present.",
+        "summary": "Summer solstice milestone reflection at Stanford Dish reviewing H1 achievements and setting H2 proactive memory goals.",
+        "topics": ["summer solstice", "Stanford Dish", "H2 goals", "associative memory", "milestones"],
+        "entities": ["Stanford Dish", "Summer Solstice", "ThoughtStash H2"],
+        "mood": "inspired",
+        "key_insights": ["Mid-year milestone reviews anchor team focus on the next phase of high-leverage associative intelligence."],
+        "thought_type": "reflection",
+        "urgency": "medium",
+        "implicit_questions": ["What automated metric confirms that our associative memory links are truly surprising and helpful?"],
+        "latitude": 37.4205,
+        "longitude": -122.1830,
+        "location_name": "Stanford Dish Trail, Palo Alto, CA"
+    },
+    {
+        "created_at": "2026-06-28T18:00:00Z",
+        "transcript": "Looking out at the Pacific horizon in the June breeze. Refined our multi-agent architecture proposal: Scribe handles immediate voice transcription, Connector autonomously scans for historical themes, and Oracle answers user queries with personal grounding.",
+        "summary": "Formulating the 3-agent triad (Scribe, Connector, Oracle) that powers the ThoughtStash autonomous memory pipeline.",
+        "topics": ["agent triad", "Scribe", "Connector", "Oracle", "architecture"],
+        "entities": ["Mori Point", "Agent Triad", "ThoughtStash"],
+        "mood": "focused",
+        "key_insights": ["Decoupling real-time transcription from asynchronous graph linking allows instant UI responses without sacrificing deep memory linking."],
+        "thought_type": "decision",
+        "urgency": "high",
+        "implicit_questions": ["How should the Connector agent schedule background sweeps without competing for user bandwidth?"],
+        "latitude": 37.6050,
+        "longitude": -122.4970,
+        "location_name": "Mori Point Blufftop, Pacifica, CA"
     }
 ]
 
@@ -680,10 +1040,17 @@ async def seed_data():
     for idx, item in enumerate(DEMO_THOUGHTS, 1):
         print(f"[{idx}/{len(DEMO_THOUGHTS)}] Embedding: {item['summary'][:50]}...")
         try:
-            emb = agents.get_embedding(item["transcript"])
+            emb_res = agents.get_embedding(item["transcript"])
+            emb = emb_res[0] if isinstance(emb_res, tuple) else emb_res
+            emb_model = emb_res[1] if isinstance(emb_res, tuple) else "gemini-embedding-001"
         except Exception as e:
-            print(f"   Embedding error: {e}, using empty list")
-            emb = []
+            print(f"   Embedding error: {e}, attempting fallback...")
+            try:
+                emb_res = agents.get_embedding(item["summary"])
+                emb = emb_res[0] if isinstance(emb_res, tuple) else emb_res
+                emb_model = emb_res[1] if isinstance(emb_res, tuple) else "gemini-embedding-001"
+            except Exception:
+                emb, emb_model = [], "none"
 
         thought_record = {
             "created_at": item["created_at"],
@@ -701,28 +1068,31 @@ async def seed_data():
             "longitude": item["longitude"],
             "location_name": item["location_name"],
             "embedding": emb,
+            "embedding_model": emb_model,
             "raw_response": json.dumps(item),
         }
         t_id = db.save_thought(thought_record)
-        print(f"   Saved thought #{t_id} ({item['location_name']})")
+        print(f"   Saved thought #{t_id} ({item['created_at'][:10]}) @ {item['location_name']}")
 
     print("\n✨ Generating Connector agent pattern links for thoughts...")
     all_thoughts = db.get_all_thoughts()
     
-    # Run connector on a subset of thoughts to populate realistic connections
-    for i in range(1, min(len(all_thoughts), 6)):
+    # Run connector on a subset of thoughts across the year to populate realistic connections
+    step = max(1, len(all_thoughts) // 10)
+    for i in range(0, min(len(all_thoughts), 50), step):
         target = all_thoughts[i]
-        past = all_thoughts[i+1:]
+        past = [t for j, t in enumerate(all_thoughts) if j != i][:12]
         if past:
             try:
-                print(f"🔗 Linking thought #{target['id']} against {len(past)} historical thoughts...")
-                analysis = await agents.connector_analyze(target, past[:10])
+                print(f"🔗 Linking thought #{target['id']} against historical thoughts...")
+                analysis = await agents.connector_analyze(target, past)
                 db.update_thought_connections(target["id"], json.dumps(analysis))
             except Exception as e:
                 print(f"   Connector error on #{target['id']}: {e}")
 
-    print(f"\n🎉 Successfully seeded {len(DEMO_THOUGHTS)} Bay Area demo thoughts across Tech, Work, and Family!")
+    print(f"\n🎉 Successfully seeded {len(DEMO_THOUGHTS)} Bay Area demo thoughts across 1 full year (Aug 2025 – Aug 2026)!")
 
 
 if __name__ == "__main__":
     asyncio.run(seed_data())
+
