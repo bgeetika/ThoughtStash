@@ -68,7 +68,9 @@ async def create_thought(
 
     # Persist the raw audio
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    audio_path = os.path.join(AUDIO_DIR, f"thought_{ts}.webm")
+    ctype = audio.content_type or ""
+    ext = "mp4" if ("mp4" in ctype or "m4a" in ctype or "aac" in ctype) else "ogg" if "ogg" in ctype else "wav" if "wav" in ctype else "webm"
+    audio_path = os.path.join(AUDIO_DIR, f"thought_{ts}.{ext}")
     with open(audio_path, "wb") as f:
         f.write(audio_bytes)
 

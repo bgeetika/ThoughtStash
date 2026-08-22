@@ -76,6 +76,25 @@ function initGeolocation() {
     }
 }
 
+// ── Cross-Browser MIME & Audio Support ─────────────────────────────
+
+function getSupportedMimeType() {
+    const candidates = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/aac',
+        'audio/ogg;codecs=opus',
+        'audio/wav'
+    ];
+    for (const type of candidates) {
+        if (window.MediaRecorder && typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported(type)) {
+            return type;
+        }
+    }
+    return '';
+}
+
 // ── Voice Recording ────────────────────────────────────────────────
 
 recordBtn.addEventListener('click', async () => {
@@ -88,10 +107,26 @@ recordBtn.addEventListener('click', async () => {
 });
 
 async function startRecording() {
+    // Check for Secure Context (Chrome requirement for microphone on non-localhost)
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        const isChrome = navigator.userAgent.includes('Chrome');
+        let helpText = '⚠️ Microphone requires HTTPS or localhost.';
+        if (isChrome && window.location.hostname !== 'localhost') {
+            helpText += ' In Chrome, enable chrome://flags/#unsafely-treat-insecure-origin-as-secure for this URL, or use localhost via SSH tunnel.';
+        }
+        recordStatus.innerHTML = `<span style="color:var(--warning);font-size:12px">${helpText}</span>`;
+        alert(helpText);
+        return;
+    }
+
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+        const selectedMime = getSupportedMimeType();
+        const options = selectedMime ? { mimeType: selectedMime } : {};
+        
+        mediaRecorder = new MediaRecorder(stream, options);
         audioChunks = [];
+        const actualMime = mediaRecorder.mimeType || selectedMime || 'audio/webm';
 
         mediaRecorder.ondataavailable = (e) => {
             if (e.data.size > 0) audioChunks.push(e.data);
@@ -99,8 +134,8 @@ async function startRecording() {
 
         mediaRecorder.onstop = async () => {
             stream.getTracks().forEach(t => t.stop());
-            const blob = new Blob(audioChunks, { type: 'audio/webm' });
-            await uploadThought(blob);
+            const blob = new Blob(audioChunks, { type: actualMime });
+            await uploadThought(blob, actualMime);
         };
 
         mediaRecorder.start(250); // collect in 250ms chunks
@@ -112,7 +147,7 @@ async function startRecording() {
         updateTimer();
         timerInterval = setInterval(() => { seconds++; updateTimer(); }, 1000);
     } catch (err) {
-        recordStatus.textContent = '⚠️ Microphone access denied';
+        recordStatus.textContent = `⚠️ Microphone access failed: ${err.message}`;
         console.error('Mic error:', err);
     }
 }
@@ -143,7 +178,7 @@ function setAgentState(chip, state, label) {
 
 // ── Upload & Process (Agentic Pipeline) ────────────────────────────
 
-async function uploadThought(blob) {
+async function uploadThought(blob, mimeType) {
     latestThought.style.display = 'none';
     connectorInsights.style.display = 'none';
     processing.style.display = 'block';
@@ -151,8 +186,12 @@ async function uploadThought(blob) {
     // Scribe agent working
     setAgentState(scribeChip, 'working', 'Transcribing...');
 
+    const ext = (mimeType && mimeType.includes('mp4')) ? 'mp4' :
+                (mimeType && mimeType.includes('ogg')) ? 'ogg' :
+                (mimeType && mimeType.includes('wav')) ? 'wav' : 'webm';
+
     const formData = new FormData();
-    formData.append('audio', blob, 'thought.webm');
+    formData.append('audio', blob, `thought.${ext}`);
     
     // Spatio-temporal data
     const localTimestamp = new Date().toISOString();
