@@ -1,4 +1,4 @@
-"""SQLite database helpers for MindTrail."""
+"""SQLite database helpers for ThoughtStash."""
 
 import json
 import os
@@ -32,14 +32,23 @@ def init_db():
             key_insights TEXT,
             embedding TEXT,
             raw_response TEXT,
-            connections TEXT
+            connections TEXT,
+            latitude REAL,
+            longitude REAL,
+            location_name TEXT
         )
     """)
-    # Migrate: add connections column if missing (existing DBs)
-    try:
-        conn.execute("ALTER TABLE thoughts ADD COLUMN connections TEXT")
-    except sqlite3.OperationalError:
-        pass  # column already exists
+    # Migrations for existing DBs
+    for col_def in [
+        "connections TEXT",
+        "latitude REAL",
+        "longitude REAL",
+        "location_name TEXT",
+    ]:
+        try:
+            conn.execute(f"ALTER TABLE thoughts ADD COLUMN {col_def}")
+        except sqlite3.OperationalError:
+            pass  # column already exists
     conn.commit()
     conn.close()
 
@@ -51,8 +60,9 @@ def save_thought(thought_data: dict) -> int:
         """
         INSERT INTO thoughts
             (created_at, audio_path, transcript, summary, topics,
-             entities, mood, key_insights, embedding, raw_response)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             entities, mood, key_insights, embedding, raw_response,
+             latitude, longitude, location_name)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             thought_data.get("created_at", datetime.now().isoformat()),
@@ -65,6 +75,9 @@ def save_thought(thought_data: dict) -> int:
             json.dumps(thought_data.get("key_insights", [])),
             json.dumps(thought_data.get("embedding", [])),
             thought_data.get("raw_response"),
+            thought_data.get("latitude"),
+            thought_data.get("longitude"),
+            thought_data.get("location_name"),
         ),
     )
     conn.commit()

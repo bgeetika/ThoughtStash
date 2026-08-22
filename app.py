@@ -1,9 +1,9 @@
 """ThoughtStash — Voice Thought Capture with 3-Agent Swarm.
 
 Agents:
-  🖊️ Scribe     — Transcribes audio → structured thought
-  🔗 Connector  — Autonomously finds patterns after each new thought
-  🔮 Oracle     — Context-aware chat with thought history
+  🖊️ Scribe     — Transcribes audio → structured thought (with time & geo-location)
+  🔗 Connector  — Autonomously finds patterns after each new thought (spatio-temporal)
+  🔮 Oracle     — Context-aware chat with thought history + location awareness
 """
 
 import asyncio
@@ -12,7 +12,7 @@ import os
 from datetime import datetime
 
 import numpy as np
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -47,15 +47,24 @@ async def root():
 
 
 @app.post("/api/thoughts")
-async def create_thought(audio: UploadFile = File(...)):
-    """Upload audio → Scribe agent transcribes → Connector agent finds patterns.
+async def create_thought(
+    audio: UploadFile = File(...),
+    latitude: float | None = Form(None),
+    longitude: float | None = Form(None),
+    location_name: str | None = Form(None),
+    client_timestamp: str | None = Form(None),
+):
+    """Upload audio + location + time → Scribe agent transcribes → Connector agent connects.
 
-    This is the core agentic flow:
-    1. Scribe processes the audio (transcribe + structure)
-    2. Thought is saved to DB
-    3. Connector AUTONOMOUSLY runs to find connections (async, non-blocking)
+    Agentic Flow:
+    1. Scribe processes audio with exact timestamp and GPS location
+    2. Thought + spatio-temporal metadata saved to DB
+    3. Connector agent runs autonomously in background to find cross-session patterns
     """
     audio_bytes = await audio.read()
+
+    # Timestamp
+    created_at = client_timestamp or datetime.now().isoformat()
 
     # Persist the raw audio
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -63,13 +72,35 @@ async def create_thought(audio: UploadFile = File(...)):
     with open(audio_path, "wb") as f:
         f.write(audio_bytes)
 
+    # Location context description for Scribe
+    location_context = location_name or ""
+    if latitude is not None and longitude is not None:
+        coords_str = f"Latitude: {latitude:.5f}, Longitude: {longitude:.5f}"
+        location_context = (
+            f"{location_name} ({coords_str})" if location_name else coords_str
+        )
+    if not location_context:
+        location_context = "Location not available"
+
     # ── Agent 1: SCRIBE ──────────────────────────────────────────
     try:
         structured = await agents.scribe_process(
-            audio_bytes, mime_type=audio.content_type or "audio/webm"
+            audio_bytes,
+            mime_type=audio.content_type or "audio/webm",
+            timestamp=created_at,
+            location_context=location_context,
         )
     except Exception as e:
         raise HTTPException(500, detail=f"Scribe agent failed: {e}")
+
+    # Fallback location name from Scribe inference if not given by client
+    final_location_name = location_name or structured.get("location_name")
+    if (
+        not final_location_name
+        and latitude is not None
+        and longitude is not None
+    ):
+        final_location_name = f"{latitude:.4f}, {longitude:.4f}"
 
     # Embedding for semantic search
     try:
@@ -78,7 +109,7 @@ async def create_thought(audio: UploadFile = File(...)):
         embedding = []
 
     thought_data = {
-        "created_at": datetime.now().isoformat(),
+        "created_at": created_at,
         "audio_path": audio_path,
         "transcript": structured.get("transcript", ""),
         "summary": structured.get("summary", ""),
@@ -89,6 +120,9 @@ async def create_thought(audio: UploadFile = File(...)):
         "thought_type": structured.get("thought_type", "observation"),
         "urgency": structured.get("urgency", "low"),
         "implicit_questions": structured.get("implicit_questions", []),
+        "latitude": latitude,
+        "longitude": longitude,
+        "location_name": final_location_name,
         "embedding": embedding,
         "raw_response": json.dumps(structured),
     }
@@ -99,7 +133,11 @@ async def create_thought(audio: UploadFile = File(...)):
     asyncio.create_task(_run_connector(thought_data))
 
     # Response to user — don't wait for Connector
-    result = {k: v for k, v in thought_data.items() if k not in ("embedding", "raw_response")}
+    result = {
+        k: v
+        for k, v in thought_data.items()
+        if k not in ("embedding", "raw_response")
+    }
     return result
 
 
@@ -109,7 +147,9 @@ async def _run_connector(new_thought: dict):
     try:
         past_thoughts = db.get_all_thoughts()
         # Exclude the thought we just added
-        past_thoughts = [t for t in past_thoughts if t.get("id") != new_thought.get("id")]
+        past_thoughts = [
+            t for t in past_thoughts if t.get("id") != new_thought.get("id")
+        ]
 
         if not past_thoughts:
             return  # First thought, nothing to connect
@@ -120,11 +160,19 @@ async def _run_connector(new_thought: dict):
         # Store connection data with the thought
         db.update_thought_connections(new_thought["id"], json.dumps(insights))
 
-        print(f"🔗 Connector agent found patterns for thought #{new_thought['id']}:")
+        print(
+            f"🔗 Connector agent found patterns for thought"
+            f" #{new_thought['id']}:"
+        )
         if insights.get("proactive_insight"):
             print(f"   💡 Proactive insight: {insights['proactive_insight']}")
         if insights.get("connections"):
             print(f"   🔗 {len(insights['connections'])} connections found")
+        if insights.get("spatio_temporal_insights"):
+            print(
+                "   📍 Spatio-temporal:"
+                f" {insights['spatio_temporal_insights']}"
+            )
     except Exception as e:
         print(f"⚠️ Connector agent error: {e}")
 
@@ -155,7 +203,10 @@ async def get_thought_connections(thought_id: int):
     """Get the Connector agent's analysis for a specific thought."""
     connections = db.get_thought_connections(thought_id)
     if not connections:
-        return {"status": "pending", "message": "Connector agent hasn't processed this yet"}
+        return {
+            "status": "pending",
+            "message": "Connector agent hasn't processed this yet",
+        }
     return connections
 
 
@@ -163,7 +214,10 @@ async def get_thought_connections(thought_id: int):
 async def get_latest_connections():
     """Get the most recent Connector agent insights."""
     if not latest_connector_insights:
-        return {"status": "none", "message": "No connector insights yet. Record some thoughts!"}
+        return {
+            "status": "none",
+            "message": "No connector insights yet. Record some thoughts!",
+        }
     return latest_connector_insights
 
 
@@ -182,7 +236,9 @@ async def get_patterns():
     try:
         return await agents.connector_full_analysis(thoughts)
     except Exception as e:
-        raise HTTPException(500, detail=f"Connector pattern analysis failed: {e}")
+        raise HTTPException(
+            500, detail=f"Connector pattern analysis failed: {e}"
+        )
 
 
 # ── Semantic Search ─────────────────────────────────────────────────
@@ -204,7 +260,9 @@ async def search_thoughts(q: str):
         if not a or not b:
             return 0.0
         a, b = np.array(a), np.array(b)
-        return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-8))
+        return float(
+            np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-8)
+        )
 
     scored = []
     for t in all_thoughts:
@@ -246,9 +304,13 @@ async def chat(req: ChatRequest):
             if not a or not b:
                 return 0.0
             a, b = np.array(a), np.array(b)
-            return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-8))
+            return float(
+                np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-8)
+            )
 
-        scored = [(cosine(query_emb, t.get("embedding", [])), t) for t in all_thoughts]
+        scored = [
+            (cosine(query_emb, t.get("embedding", [])), t) for t in all_thoughts
+        ]
         scored.sort(key=lambda x: x[0], reverse=True)
         relevant = [t for _, t in scored[:7]]
     except Exception:
@@ -275,15 +337,17 @@ async def agent_status():
         "agents": [
             {
                 "name": "🖊️ Scribe",
-                "role": "Transcribe + Structure",
+                "role": "Transcribe + Structure (Time & Geo)",
                 "status": "ready",
                 "thoughts_processed": len(thoughts),
             },
             {
                 "name": "🔗 Connector",
-                "role": "Pattern Finding (Autonomous)",
+                "role": "Spatio-Temporal Patterns (Autonomous)",
                 "status": "active" if latest_connector_insights else "waiting",
-                "last_insight": latest_connector_insights.get("proactive_insight", "None yet"),
+                "last_insight": latest_connector_insights.get(
+                    "proactive_insight", "None yet"
+                ),
             },
             {
                 "name": "🔮 Oracle",

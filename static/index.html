@@ -15,7 +15,7 @@
             <span class="logo-icon">🧠</span>
             <h1>ThoughtStash</h1>
         </div>
-        <p class="tagline">Capture thoughts on walks. Let AI find the patterns.</p>
+        <p class="tagline">Capture thoughts on walks. Let AI find the patterns across time & place.</p>
     </header>
 
     <!-- Agent Status Bar -->
@@ -28,7 +28,7 @@
     <!-- Navigation Tabs -->
     <nav class="tabs">
         <button class="tab active" data-tab="capture">🎙️ Capture</button>
-        <button class="tab" data-tab="thoughts">💭 Thoughts</button>
+        <button class="tab" data-tab="thoughts">💭 Timeline</button>
         <button class="tab" data-tab="patterns">🔗 Patterns</button>
         <button class="tab" data-tab="chat">💬 Chat</button>
     </nav>
@@ -42,6 +42,7 @@
                 </button>
                 <p id="recordStatus" class="record-status">Tap to start recording</p>
                 <div id="timer" class="timer" style="display:none">00:00</div>
+                <div id="locationBadge" class="location-badge">📍 Detecting location...</div>
             </div>
             <div id="waveform" class="waveform"></div>
         </div>
@@ -49,7 +50,7 @@
         <!-- Processing indicator -->
         <div id="processing" class="processing" style="display:none">
             <div class="spinner"></div>
-            <p>Processing your thought with AI...</p>
+            <p>Processing your thought with AI agents...</p>
         </div>
 
         <!-- Latest thought result -->
@@ -67,6 +68,10 @@
                 <div class="result-card">
                     <h4>🏷️ Topics</h4>
                     <div id="resultTopics" class="tags"></div>
+                </div>
+                <div class="result-card">
+                    <h4>📍 Time & Location</h4>
+                    <p id="resultLocationTime"></p>
                 </div>
                 <div class="result-card">
                     <h4>😊 Mood</h4>
@@ -91,7 +96,7 @@
         <div class="section-header">
             <h2>Your Thought Timeline</h2>
             <div class="search-bar">
-                <input type="text" id="searchInput" placeholder="🔍 Semantic search your thoughts...">
+                <input type="text" id="searchInput" placeholder="🔍 Search by topic, idea, or place...">
                 <button id="searchBtn">Search</button>
             </div>
         </div>
@@ -103,11 +108,11 @@
     <!-- Patterns Tab -->
     <section id="patterns" class="tab-content">
         <div class="section-header">
-            <h2>Thought Patterns</h2>
+            <h2>Spatio-Temporal Thought Patterns</h2>
             <button id="analyzeBtn" class="btn-primary">🔍 Analyze My Thinking</button>
         </div>
         <div id="patternsResult" class="patterns-container">
-            <p class="empty-state">Click "Analyze My Thinking" to discover patterns across your thoughts.</p>
+            <p class="empty-state">Click "Analyze My Thinking" to discover patterns across time and locations.</p>
         </div>
     </section>
 
@@ -117,13 +122,13 @@
             <div id="chatMessages" class="chat-messages">
                 <div class="chat-msg assistant">
                     <div class="msg-content">
-                        <p>Hey! I'm ThoughtStash — I know what you've been thinking about. 
-                        Ask me anything about your past thoughts, or let's explore connections between your ideas. 🧠</p>
+                        <p>Hey! I'm ThoughtStash — I know what you've been thinking about, when, and where. 
+                        Ask me anything about your walk thoughts, or let's explore connections between your ideas. 🧠📍</p>
                     </div>
                 </div>
             </div>
             <div class="chat-input-area">
-                <input type="text" id="chatInput" placeholder="What have I been thinking about lately?">
+                <input type="text" id="chatInput" placeholder="What was I thinking about on my walk yesterday?">
                 <button id="chatSendBtn">Send</button>
             </div>
         </div>

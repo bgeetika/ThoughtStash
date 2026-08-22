@@ -1,6 +1,6 @@
 /**
  * ThoughtStash — Frontend logic
- * Voice recording, API calls, UI rendering
+ * Voice recording, Geo-location, Timestamping, Agent status, UI rendering
  */
 
 // ── State ──────────────────────────────────────────────────────────
@@ -11,12 +11,14 @@ let isRecording = false;
 let timerInterval = null;
 let seconds = 0;
 let chatHistory = [];
+let currentGeo = { latitude: null, longitude: null, locationName: null };
 
 // ── DOM refs ───────────────────────────────────────────────────────
 
 const recordBtn = document.getElementById('recordBtn');
 const recordStatus = document.getElementById('recordStatus');
 const timerEl = document.getElementById('timer');
+const locationBadge = document.getElementById('locationBadge');
 const processing = document.getElementById('processing');
 const latestThought = document.getElementById('latestThought');
 const thoughtsList = document.getElementById('thoughtsList');
@@ -27,6 +29,12 @@ const patternsResult = document.getElementById('patternsResult');
 const chatMessages = document.getElementById('chatMessages');
 const chatInput = document.getElementById('chatInput');
 const chatSendBtn = document.getElementById('chatSendBtn');
+
+const scribeChip = document.getElementById('scribeStatus');
+const connectorChip = document.getElementById('connectorStatus');
+const oracleChip = document.getElementById('oracleStatus');
+const connectorInsights = document.getElementById('connectorInsights');
+const connectorContent = document.getElementById('connectorContent');
 
 // ── Tab Navigation ─────────────────────────────────────────────────
 
@@ -42,10 +50,37 @@ document.querySelectorAll('.tab').forEach(tab => {
     });
 });
 
+// ── Geolocation Detection ──────────────────────────────────────────
+
+function initGeolocation() {
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                currentGeo.latitude = pos.coords.latitude;
+                currentGeo.longitude = pos.coords.longitude;
+                if (locationBadge) {
+                    locationBadge.innerHTML = `📍 GPS Active (${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)})`;
+                    locationBadge.classList.add('active');
+                }
+            },
+            (err) => {
+                console.log("Geolocation info:", err.message);
+                if (locationBadge) {
+                    locationBadge.innerHTML = `📍 Local Time Captured`;
+                }
+            },
+            { enableHighAccuracy: true, timeout: 8000 }
+        );
+    } else {
+        if (locationBadge) locationBadge.innerHTML = `📍 Location on`;
+    }
+}
+
 // ── Voice Recording ────────────────────────────────────────────────
 
 recordBtn.addEventListener('click', async () => {
     if (!isRecording) {
+        initGeolocation(); // refresh GPS right when user initiates recording
         await startRecording();
     } else {
         stopRecording();
@@ -71,7 +106,7 @@ async function startRecording() {
         mediaRecorder.start(250); // collect in 250ms chunks
         isRecording = true;
         recordBtn.classList.add('recording');
-        recordStatus.textContent = 'Recording... tap to stop';
+        recordStatus.textContent = 'Recording walk thought... tap to stop';
         timerEl.style.display = 'block';
         seconds = 0;
         updateTimer();
@@ -88,7 +123,7 @@ function stopRecording() {
     }
     isRecording = false;
     recordBtn.classList.remove('recording');
-    recordStatus.textContent = 'Processing...';
+    recordStatus.textContent = 'Scribe processing...';
     clearInterval(timerInterval);
 }
 
@@ -100,13 +135,8 @@ function updateTimer() {
 
 // ── Agent Status Helpers ───────────────────────────────────────────
 
-const scribeChip = document.getElementById('scribeStatus');
-const connectorChip = document.getElementById('connectorStatus');
-const oracleChip = document.getElementById('oracleStatus');
-const connectorInsights = document.getElementById('connectorInsights');
-const connectorContent = document.getElementById('connectorContent');
-
 function setAgentState(chip, state, label) {
+    if (!chip) return;
     chip.className = 'agent-chip ' + state;
     chip.querySelector('span').textContent = label;
 }
@@ -119,10 +149,23 @@ async function uploadThought(blob) {
     processing.style.display = 'block';
 
     // Scribe agent working
-    setAgentState(scribeChip, 'working', 'Processing...');
+    setAgentState(scribeChip, 'working', 'Transcribing...');
 
     const formData = new FormData();
     formData.append('audio', blob, 'thought.webm');
+    
+    // Spatio-temporal data
+    const localTimestamp = new Date().toISOString();
+    formData.append('client_timestamp', localTimestamp);
+    if (currentGeo.latitude !== null) {
+        formData.append('latitude', currentGeo.latitude);
+    }
+    if (currentGeo.longitude !== null) {
+        formData.append('longitude', currentGeo.longitude);
+    }
+    if (currentGeo.locationName) {
+        formData.append('location_name', currentGeo.locationName);
+    }
 
     try {
         const res = await fetch('/api/thoughts', { method: 'POST', body: formData });
@@ -137,9 +180,9 @@ async function uploadThought(blob) {
         showThoughtResult(thought);
 
         // Connector agent is now working autonomously in the background
-        setAgentState(connectorChip, 'working', 'Analyzing...');
+        setAgentState(connectorChip, 'working', 'Connecting...');
 
-        // Poll for connector results (it runs async on the server)
+        // Poll for connector results
         pollConnectorInsights(thought.id);
 
     } catch (err) {
@@ -154,7 +197,6 @@ async function uploadThought(blob) {
 }
 
 async function pollConnectorInsights(thoughtId) {
-    // Poll every 2s for up to 30s
     for (let i = 0; i < 15; i++) {
         await new Promise(r => setTimeout(r, 2000));
         try {
@@ -178,12 +220,17 @@ function showConnectorInsights(data) {
         html += `<div class="proactive-insight">💡 ${data.proactive_insight}</div>`;
     }
 
+    if (data.spatio_temporal_insights) {
+        html += `<div class="connection-item">📍 <strong>Spatio-Temporal Pattern:</strong> ${data.spatio_temporal_insights}</div>`;
+    }
+
     if (data.connections?.length) {
-        html += '<h4 style="margin-top:12px; font-size:13px; color:var(--text-muted)">Connections to past thoughts:</h4>';
+        html += '<h4 style="margin-top:12px; font-size:13px; color:var(--text-muted)">Connections across time & place:</h4>';
         data.connections.forEach(c => {
             const icon = c.connection_type === 'contradicts' ? '⚡' :
                          c.connection_type === 'evolves' ? '📈' : '🔗';
-            html += `<div class="connection-item">${icon} <strong>${c.connection_type}</strong>: ${c.explanation}</div>`;
+            const locInfo = c.past_location ? ` @ ${c.past_location}` : '';
+            html += `<div class="connection-item">${icon} <strong>${c.connection_type}</strong> (${c.past_thought_date}${locInfo}): ${c.explanation}</div>`;
         });
     }
 
@@ -202,6 +249,19 @@ function showThoughtResult(thought) {
     document.getElementById('resultSummary').textContent = thought.summary || '—';
     document.getElementById('resultMood').textContent = thought.mood || '—';
 
+    // Time & Location display
+    const dateObj = new Date(thought.created_at);
+    const dateFormatted = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    const timeFormatted = dateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    
+    let locationStr = thought.location_name || '';
+    if (!locationStr && thought.latitude != null) {
+        locationStr = `GPS: ${Number(thought.latitude).toFixed(4)}, ${Number(thought.longitude).toFixed(4)}`;
+    }
+    const fullLocTime = `🕒 ${dateFormatted} at ${timeFormatted}` + (locationStr ? `<br>📍 ${locationStr}` : '');
+    document.getElementById('resultLocationTime').innerHTML = fullLocTime;
+
+    // Topics
     const topicsEl = document.getElementById('resultTopics');
     topicsEl.innerHTML = '';
     (thought.topics || []).forEach(t => {
@@ -211,6 +271,7 @@ function showThoughtResult(thought) {
         topicsEl.appendChild(span);
     });
 
+    // Insights
     const insightsEl = document.getElementById('resultInsights');
     insightsEl.innerHTML = '';
     (thought.key_insights || []).forEach(insight => {
@@ -240,7 +301,7 @@ async function loadThoughts(searchQuery) {
 function renderThoughts(thoughts, isSearch) {
     if (!thoughts.length) {
         thoughtsList.innerHTML = `<p class="empty-state">${
-            isSearch ? 'No matching thoughts found' : 'No thoughts yet. Go capture some! 🎙️'
+            isSearch ? 'No matching thoughts found' : 'No thoughts yet. Go for a walk and capture some! 🎙️'
         }</p>`;
         return;
     }
@@ -250,17 +311,26 @@ function renderThoughts(thoughts, isSearch) {
         const card = document.createElement('div');
         card.className = 'thought-card';
 
-        const date = new Date(t.created_at).toLocaleString();
+        const dateObj = new Date(t.created_at);
+        const dateStr = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         const relevance = t.relevance !== undefined ? ` · relevance: ${(t.relevance * 100).toFixed(0)}%` : '';
+
+        let locBadge = '';
+        if (t.location_name) {
+            locBadge = `<span class="tag" style="background:#3b82f6;font-size:11px">📍 ${t.location_name}</span>`;
+        } else if (t.latitude != null) {
+            locBadge = `<span class="tag" style="background:#3b82f6;font-size:11px">📍 ${Number(t.latitude).toFixed(3)}, ${Number(t.longitude).toFixed(3)}</span>`;
+        }
 
         card.innerHTML = `
             <div class="meta">
-                <span class="date">📅 ${date}${relevance}</span>
+                <span class="date">📅 ${dateStr}${relevance}</span>
                 <span class="mood-badge">${t.mood || '—'}</span>
             </div>
             <div class="summary">${t.summary || '—'}</div>
             <div class="transcript">${t.transcript || ''}</div>
             <div class="card-footer">
+                ${locBadge}
                 ${(t.topics || []).map(tp => `<span class="tag">${tp}</span>`).join('')}
             </div>
         `;
@@ -282,7 +352,7 @@ searchInput.addEventListener('keydown', (e) => {
 analyzeBtn.addEventListener('click', async () => {
     analyzeBtn.disabled = true;
     analyzeBtn.textContent = '⏳ Analyzing...';
-    patternsResult.innerHTML = '<div class="processing"><div class="spinner"></div><p>Analyzing your thought patterns...</p></div>';
+    patternsResult.innerHTML = '<div class="processing"><div class="spinner"></div><p>Analyzing your spatio-temporal thought patterns...</p></div>';
 
     try {
         const res = await fetch('/api/patterns');
@@ -375,7 +445,7 @@ async function sendChatMessage() {
     chatSendBtn.disabled = true;
 
     // Show typing indicator
-    const typingId = appendChatMsg('assistant', '⏳ Thinking...');
+    const typingId = appendChatMsg('assistant', '⏳ Oracle searching thoughts & locations...');
 
     try {
         const res = await fetch('/api/chat', {
@@ -391,7 +461,6 @@ async function sendChatMessage() {
         // Track history
         chatHistory.push({ role: 'user', content: message });
         chatHistory.push({ role: 'model', content: data.response });
-        // Keep history manageable
         if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
     } catch (err) {
         typingId.querySelector('.msg-content p').textContent = `❌ Error: ${err.message}`;
@@ -412,5 +481,5 @@ function appendChatMsg(role, text) {
 
 // ── Init ───────────────────────────────────────────────────────────
 
-// Load thoughts on startup (for the thoughts tab)
+initGeolocation();
 loadThoughts();
