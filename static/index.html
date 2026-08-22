@@ -3,363 +3,401 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ThoughtStash — Voice Notebook & Memory</title>
+    <title>Thought Stash — A home for half-formed ideas</title>
     
-    <!-- Modern Sans & Mono Typography -->
+    <!-- Prescriptive Typography Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..500;1,6..72,200..400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600&display=swap" rel="stylesheet">
     
-    <!-- Leaflet Map CSS & JS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    
-    <!-- Three.js (for 3D Audio Visualizer & Interactive Knowledge Graph) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    
+    <!-- Branding Kit Stylesheet -->
     <link rel="stylesheet" href="/static/style.css">
+    
+    <!-- Favicon: Petrol square, radius 22%, mark centered in #F4F4F1 with #C1912B capstone -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect width='96' height='96' rx='21' fill='%231D4E4B'/><g transform='translate(15.36,15.36) scale(0.68)' fill='none' stroke='%23F4F4F1' stroke-width='4'><ellipse cx='48' cy='80' rx='30' ry='8'/><ellipse cx='48' cy='60' rx='23' ry='7.5'/><ellipse cx='48' cy='42' rx='16' ry='7'/><circle cx='48' cy='22' r='6' fill='%23C1912B' stroke='none'/></g></svg>">
 </head>
 <body>
-    <div class="app-shell">
-        <!-- Minimal Light Header -->
-        <header class="app-header">
-            <div class="brand-container">
-                <div class="brand-logo-mark">
-                    <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <line x1="8" y1="16" x2="24" y2="8" stroke="#cbd5e1" stroke-width="3" stroke-linecap="round"/>
-                        <line x1="8" y1="16" x2="22" y2="24" stroke="#cbd5e1" stroke-width="3" stroke-linecap="round"/>
-                        <line x1="24" y1="8" x2="22" y2="24" stroke="#cbd5e1" stroke-width="3" stroke-linecap="round"/>
-                        <circle cx="8" cy="16" r="6" fill="#10b981" />
-                        <circle cx="8" cy="16" r="3" fill="#ffffff" />
-                        <circle cx="24" cy="8" r="5" fill="#3b82f6" />
-                        <circle cx="24" cy="8" r="2.5" fill="#ffffff" />
-                        <circle cx="22" cy="24" r="5.5" fill="#f59e0b" />
-                        <circle cx="22" cy="24" r="2.5" fill="#ffffff" />
-                    </svg>
+
+    <!-- 1. Nav Header (Height 72px, border fades in on 40px scroll) -->
+    <header class="nav-header" id="navHeader">
+        <div class="container nav-inner">
+            <!-- Lockup: Mark at 32px + Wordmark -->
+            <a href="/" class="brand-lockup" aria-label="Thought Stash Home">
+                <svg viewBox="0 0 96 96" width="32" height="32" role="img" aria-label="Thought Stash Cairn Mark">
+                    <g fill="none" stroke="currentColor" stroke-width="3">
+                        <ellipse cx="48" cy="80" rx="30" ry="8"/>
+                        <ellipse cx="48" cy="60" rx="23" ry="7.5"/>
+                        <ellipse cx="48" cy="42" rx="16" ry="7"/>
+                    </g>
+                    <circle cx="48" cy="22" r="5.5" fill="var(--petrol)"/>
+                </svg>
+                <div class="brand-wordmark">
+                    <span class="word-thought">thought</span> <span class="word-stash">stash</span>
                 </div>
-                <div class="brand-text">
-                    <h1>ThoughtStash</h1>
-                    <span class="brand-tagline">Voice notes & connected memory</span>
-                </div>
-            </div>
+            </a>
 
-            <!-- Status Indicator -->
-            <div class="system-status-pill">
-                <span class="status-dot"></span>
-                <span class="status-label">Ready</span>
-            </div>
-        </header>
-
-        <!-- Clean Navigation Dock -->
-        <nav class="nav-dock">
-            <button class="nav-btn active" data-tab="capture">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
-                <span>Record</span>
-            </button>
-            <button class="nav-btn" data-tab="mapTab">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
-                <span>Map</span>
-            </button>
-            <button class="nav-btn" data-tab="graphTab">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
-                <span>Connections</span>
-            </button>
-            <button class="nav-btn" data-tab="thoughts">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
-                <span>Timeline</span>
-            </button>
-            <button class="nav-btn" data-tab="patterns">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="m13 13 6 6"/></svg>
-                <span>Patterns</span>
-            </button>
-            <button class="nav-btn" data-tab="chat">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                <span>Ask</span>
-            </button>
-        </nav>
-
-        <!-- Main Workspace -->
-        <main class="workspace">
-            
-            <!-- 🎙️ 1. CAPTURE / RECORD TAB -->
-            <section id="capture" class="tab-view active">
-                <div class="capture-stage">
-                    <div class="page-intro">
-                        <h2>Capture your thoughts.</h2>
-                        <p class="subtitle">Voice notes organized by location, topics, and time.</p>
-                    </div>
-
-                    <!-- Clean 3D Audio Visualizer Card -->
-                    <div class="recorder-card">
-                        <div id="threeOrbCanvas" class="three-stage-canvas"></div>
-                        
-                        <div class="recorder-controls">
-                            <button id="recordBtn" class="record-action-btn" aria-label="Record voice note">
-                                <div class="pulse-ring"></div>
-                                <div class="btn-core">
-                                    <svg class="mic-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
-                                    <span class="stop-box"></span>
-                                </div>
-                            </button>
-                            
-                            <div class="record-meta">
-                                <div id="recordStatus" class="record-status-text">Tap to record a voice note</div>
-                                <div id="timer" class="record-timer-text" style="display:none">00:00</div>
-                                <div id="locationBadge" class="record-location-pill" title="Click to change or detect location">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/><circle cx="12" cy="10" r="3"/></svg>
-                                    <span id="locationBadgeText">Palo Alto, CA</span>
-                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Location Selector Modal -->
-                    <div id="locationModal" class="location-modal-backdrop" style="display:none">
-                        <div class="location-modal-card">
-                            <div class="location-modal-header">
-                                <h4>Set Walk Location</h4>
-                                <button id="closeLocationModalBtn" class="close-modal-btn" aria-label="Close">&times;</button>
-                            </div>
-                            <div class="location-modal-body">
-                                <button id="detectGpsBtn" class="btn btn-secondary btn-full">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="22" x2="18" y1="12" y2="12"/><line x1="6" x2="2" y1="12" y2="12"/><line x1="12" x2="12" y1="6" y2="2"/><line x1="12" x2="12" y1="22" y2="18"/></svg>
-                                    <span>Detect GPS Location</span>
-                                </button>
-                                <div class="location-divider"><span>or search a place</span></div>
-                                <div class="location-search-row">
-                                    <input type="text" id="customLocationInput" placeholder="Type city, trail, or neighborhood...">
-                                    <button id="applyLocationBtn" class="btn btn-primary">Set</button>
-                                </div>
-                                <div class="quick-places-group">
-                                    <span class="quick-places-label">Popular Walk Spots:</span>
-                                    <div class="quick-places-chips">
-                                        <button class="place-chip" type="button" data-name="Rancho San Antonio, Cupertino" data-lat="37.3328" data-lon="-122.0864">Rancho San Antonio</button>
-                                        <button class="place-chip" type="button" data-name="Stanford Dish Trail, Palo Alto" data-lat="37.4172" data-lon="-122.1736">Stanford Dish</button>
-                                        <button class="place-chip" type="button" data-name="Shoreline Park, Mountain View" data-lat="37.4302" data-lon="-122.0824">Shoreline Park</button>
-                                        <button class="place-chip" type="button" data-name="Castro Street, Mountain View" data-lat="37.3942" data-lon="-122.0795">Castro St (Mtn View)</button>
-                                        <button class="place-chip" type="button" data-name="Mission Dolores Park, SF" data-lat="37.7596" data-lon="-122.4269">Mission Dolores (SF)</button>
-                                        <button class="place-chip" type="button" data-name="Burlingame Avenue, Burlingame" data-lat="37.5779" data-lon="-122.3481">Burlingame Ave</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Quick Text Fallback Input -->
-                    <div class="quick-text-box">
-                        <input type="text" id="textThoughtInput" placeholder="Or type a quick note..." autocomplete="off">
-                        <button id="textThoughtSubmit" class="quick-submit-btn">Save</button>
-                    </div>
-
-                    <!-- Processing State -->
-                    <div id="processing" class="card processing-banner" style="display:none">
-                        <div class="loading-spinner"></div>
-                        <div class="processing-info">
-                            <h4>Transcribing note...</h4>
-                            <p>Organizing key points and connecting with past notes...</p>
-                        </div>
-                    </div>
-
-                    <!-- Thought Result Card -->
-                    <div id="latestThought" class="card result-card" style="display:none">
-                        <div class="result-top">
-                            <div class="result-title-area">
-                                <span class="tag-label">Note Saved</span>
-                                <h3 id="resultSummary"></h3>
-                            </div>
-                            <div class="result-meta-area">
-                                <span id="resultMoodBadge" class="badge"></span>
-                                <span id="resultTimeLocation" class="badge badge-light"></span>
-                            </div>
-                        </div>
-
-                        <div class="result-details">
-                            <div class="detail-section">
-                                <label>Transcript</label>
-                                <blockquote id="resultTranscript"></blockquote>
-                            </div>
-                            <div class="detail-section">
-                                <label>Topics</label>
-                                <div id="resultTopics" class="tags-row"></div>
-                            </div>
-                            <div class="detail-section full-width">
-                                <label>Key Takeaways</label>
-                                <ul id="resultInsights" class="bullet-list"></ul>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Connected Thoughts Banner -->
-                    <div id="connectorInsights" class="card connections-card" style="display:none">
-                        <div class="card-heading">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
-                            <h4>Connected Thoughts</h4>
-                        </div>
-                        <div id="connectorContent" class="connections-body"></div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- 🗺️ 2. MAP TAB -->
-            <section id="mapTab" class="tab-view">
-                <div class="page-intro-row">
-                    <div>
-                        <h2>Walk Map</h2>
-                        <p class="subtitle">Places and paths where your thoughts were recorded.</p>
-                    </div>
-                    <div class="category-legend">
-                        <div class="legend-chip"><span class="chip-color color-blue"></span> Tech</div>
-                        <div class="legend-chip"><span class="chip-color color-green"></span> Work</div>
-                        <div class="legend-chip"><span class="chip-color color-amber"></span> Family</div>
-                        <div class="legend-chip"><span class="chip-color color-coral"></span> Wellness</div>
-                    </div>
-                </div>
-
-                <div class="card map-frame">
-                    <div id="thoughtMap" class="leaflet-canvas"></div>
-                </div>
-            </section>
-
-            <!-- 🕸️ 3. CONNECTIONS GRAPH TAB -->
-            <section id="graphTab" class="tab-view">
-                <div class="page-intro-row">
-                    <div>
-                        <h2>Connections</h2>
-                        <p class="subtitle">Interactive view of your ideas, themes, and how thoughts connect.</p>
-                    </div>
-                    <button id="resetGraphBtn" class="secondary-btn">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                        <span>Center View</span>
-                    </button>
-                </div>
-
-                <div class="card graph-frame">
-                    <div id="neural3DGraph" class="three-graph-canvas"></div>
-                    <div class="graph-hint">
-                        <span>Click and drag to rotate · Scroll to zoom · Click any node to open note</span>
-                    </div>
-                </div>
-            </section>
-
-            <!-- 💭 4. TIMELINE TAB -->
-            <section id="thoughts" class="tab-view">
-                <div class="page-intro-row">
-                    <div>
-                        <h2>All Notes</h2>
-                        <p class="subtitle">Chronological archive with search.</p>
-                    </div>
-                    <div class="search-bar">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                        <input type="text" id="searchInput" placeholder="Search notes, topics, or places...">
-                        <button id="searchBtn" class="search-btn">Search</button>
-                    </div>
-                </div>
-
-                <div id="thoughtsList" class="notes-grid">
-                    <div class="empty-state">Loading notes...</div>
-                </div>
-            </section>
-
-            <!-- 🔗 5. PATTERNS TAB -->
-            <section id="patterns" class="tab-view">
-                <div class="page-intro-row">
-                    <div>
-                        <h2>Patterns & Themes</h2>
-                        <p class="subtitle">Recurring topics, habits, and trends across your recent notes.</p>
-                    </div>
-                    <button id="analyzeBtn" class="primary-btn">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="m13 13 6 6"/></svg>
-                        <span>Analyze Notes</span>
-                    </button>
-                </div>
-
-                <div id="patternsResult" class="patterns-container">
-                    <div class="empty-state">Click "Analyze Notes" to review recurring themes and trends across your recordings.</div>
-                </div>
-            </section>
-
-            <!-- 💬 6. ASK CHAT TAB -->
-            <section id="chat" class="tab-view">
-                <div class="card chat-card">
-                    <div class="chat-header">
-                        <div>
-                            <h3>Ask Your Notes</h3>
-                            <p class="chat-sub">Search and ask questions across your recorded thoughts.</p>
-                        </div>
-                        <button id="newChatBtn" class="new-chat-btn" title="Start a new conversation">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                            <span>New Chat</span>
-                        </button>
-                    </div>
-
-                    <div id="chatMessages" class="chat-thread">
-                        <div class="chat-bubble assistant">
-                            <div class="bubble-avatar">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-                            </div>
-                            <div class="bubble-body">
-                                <div class="bubble-summary">Hi! Ask me anything about your past notes, walks, or ideas.</div>
-                                <div class="prompt-chips-row">
-                                    <button class="prompt-chip" type="button" data-prompt="What have I noted about hydration and health?">Hydration habits</button>
-                                    <button class="prompt-chip" type="button" data-prompt="What were my ideas about AI agents and memory?">AI agent ideas</button>
-                                    <button class="prompt-chip" type="button" data-prompt="What did I plan for my parents' anniversary?">Parents' anniversary</button>
-                                    <button class="prompt-chip" type="button" data-prompt="What notes did I record during my recent walks?">Recent walk notes</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="chat-input-bar">
-                        <input type="text" id="chatInput" placeholder="Ask about past ideas, places, or notes..." autocomplete="off">
-                        <button id="chatSendBtn" class="chat-send-btn" aria-label="Send">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                        </button>
-                    </div>
-                </div>
-            </section>
-        </main>
-    </div>
-
-    <!-- Slide-In Note Detail Drawer -->
-    <div id="thoughtInspectorDrawer" class="drawer-backdrop" style="display:none">
-        <div class="drawer-panel">
-            <div class="drawer-header">
-                <div class="category-tag" id="inspectorCategoryBadge">
-                    <span class="dot"></span>
-                    <span id="inspectorCategoryText">Tech</span>
-                </div>
-                <button id="closeInspectorBtn" class="drawer-close-btn" aria-label="Close">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+            <!-- Right Nav Links -->
+            <nav class="nav-links" id="navLinks">
+                <a href="#what-it-does">What it does</a>
+                <a href="#how-it-works">How it works</a>
+                <a href="#product-detail">In the app</a>
+                <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="Toggle theme" title="Toggle theme">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
                 </button>
+                <button class="btn-primary open-stash-btn">Start a stash</button>
+            </nav>
+
+            <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open menu">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- 2. Hero Section (52/48 desktop, constellation right) -->
+    <section class="section hero-section">
+        <div class="container hero-grid">
+            <!-- Left Copy Column -->
+            <div class="hero-copy">
+                <span class="eyebrow">A HOME FOR HALF-FORMED IDEAS</span>
+                <h1 class="display-xl hero-headline">Put the thought down. Find it <em>later</em>.</h1>
+                <p class="body-l hero-sub">Thought Stash catches the note you take at 1am and keeps it tied to everything near it, so it still makes sense in six months.</p>
+                <div class="hero-cta-group">
+                    <button class="btn-primary open-stash-btn">Start a stash</button>
+                    <a href="#how-it-works" class="text-link">See how it works</a>
+                </div>
             </div>
 
-            <div class="drawer-content">
-                <div class="drawer-meta">
-                    <span id="inspectorDate" class="meta-item"></span>
-                    <span id="inspectorLocation" class="meta-item meta-loc"></span>
+            <!-- Right Constellation Column (viewBox="0 0 540 440") -->
+            <div class="constellation-wrapper">
+                <svg class="constellation-svg" id="heroConstellation" viewBox="0 0 540 440" role="img" aria-label="Thought Constellation Graph">
+                    <!-- Threads rendered BEFORE rings -->
+                    <g class="threads">
+                        <!-- A-B --> <line class="link-A link-B" x1="88" y1="168" x2="196" y2="92" />
+                        <!-- A-C --> <line class="link-A link-C" x1="88" y1="168" x2="312" y2="200" />
+                        <!-- A-D --> <line class="link-A link-D" x1="88" y1="168" x2="148" y2="316" />
+                        <!-- B-F --> <line class="link-B link-F" x1="196" y1="92" x2="424" y2="118" />
+                        <!-- C-F --> <line class="link-C link-F" x1="312" y1="200" x2="424" y2="118" />
+                        <!-- C-E --> <line class="link-C link-E" x1="312" y1="200" x2="268" y2="356" />
+                        <!-- C-G --> <line class="link-C link-G" x1="312" y1="200" x2="468" y2="300" />
+                        <!-- D-E --> <line class="link-D link-E" x1="148" y1="316" x2="268" y2="356" />
+                        <!-- E-G --> <line class="link-E link-G" x1="268" y1="356" x2="468" y2="300" />
+                        <!-- F-G --> <line class="link-F link-G" x1="424" y1="118" x2="468" y2="300" />
+                        <!-- D-H --> <line class="link-D link-H" x1="148" y1="316" x2="60" y2="268" />
+                    </g>
+                    <!-- Rings (Never filled discs, stroke only) -->
+                    <g class="rings">
+                        <circle id="node-A" data-node="A" cx="88" cy="168" r="20" stroke-width="7" />
+                        <circle id="node-B" class="drift-b" data-node="B" cx="196" cy="92" r="15" stroke-width="5.5" />
+                        <circle id="node-C" class="drift-c" data-node="C" cx="312" cy="200" r="24" stroke-width="8" />
+                        <circle id="node-D" data-node="D" cx="148" cy="316" r="17" stroke-width="6" />
+                        <circle id="node-E" class="drift-e" data-node="E" cx="268" cy="356" r="13" stroke-width="5" />
+                        <circle id="node-F" data-node="F" cx="424" cy="118" r="17" stroke-width="6" />
+                        <circle id="node-G" class="drift-g" data-node="G" cx="468" cy="300" r="20" stroke-width="7" />
+                        <circle id="node-H" data-node="H" cx="60" cy="268" r="11" stroke-width="4" />
+                    </g>
+                </svg>
+            </div>
+        </div>
+    </section>
+
+    <!-- Structural Hairline Rule -->
+    <div class="section-rule"><hr></div>
+
+    <!-- 3. Three-up Section (Eyebrow: WHAT IT DOES) -->
+    <section class="section" id="what-it-does">
+        <div class="container">
+            <span class="eyebrow">WHAT IT DOES</span>
+            <div class="three-up-grid">
+                <!-- Card 1: Ochre -->
+                <div class="feature-card">
+                    <svg class="ring-glyph ochre" viewBox="0 0 32 32" aria-hidden="true">
+                        <circle cx="16" cy="16" r="11"/>
+                    </svg>
+                    <h3 class="card-heading">Capture</h3>
+                    <p class="body-p">Type it, paste it, or forward it. No folder, no title, no decision. The stash takes it as it comes.</p>
                 </div>
 
-                <h2 id="inspectorTitle" class="drawer-title"></h2>
-
-                <div class="drawer-section">
-                    <label>Transcript</label>
-                    <blockquote id="inspectorTranscript" class="quote-box"></blockquote>
+                <!-- Card 2: Petrol -->
+                <div class="feature-card">
+                    <svg class="ring-glyph petrol" viewBox="0 0 32 32" aria-hidden="true">
+                        <circle cx="16" cy="16" r="11"/>
+                    </svg>
+                    <h3 class="card-heading">Connect</h3>
+                    <p class="body-p">Every thought finds its neighbours on its own. Related notes surface together instead of sitting in separate files.</p>
                 </div>
 
-                <div class="drawer-section">
-                    <label>Topics</label>
-                    <div id="inspectorTopics" class="tags-row"></div>
+                <!-- Card 3: Oxblood -->
+                <div class="feature-card">
+                    <svg class="ring-glyph oxblood" viewBox="0 0 32 32" aria-hidden="true">
+                        <circle cx="16" cy="16" r="11"/>
+                    </svg>
+                    <h3 class="card-heading">Return</h3>
+                    <p class="body-p">Search by what you half-remember. Thought Stash answers with the thread, not just the note.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Structural Hairline Rule -->
+    <div class="section-rule"><hr></div>
+
+    <!-- 4. How It Works (Eyebrow: THE SEQUENCE) -->
+    <section class="section" id="how-it-works">
+        <div class="container">
+            <span class="eyebrow">THE SEQUENCE</span>
+            <div class="sequence-list">
+                <!-- Step 1 -->
+                <div class="sequence-step">
+                    <div class="sequence-num">01</div>
+                    <div class="sequence-content">
+                        <h3>Drop it in</h3>
+                        <p class="body-p">One box. Anything you were about to lose.</p>
+                    </div>
                 </div>
 
-                <div class="drawer-section" id="inspectorInsightsSection">
-                    <label>Key Points</label>
-                    <ul id="inspectorInsightsList" class="bullet-list"></ul>
+                <!-- Step 2 -->
+                <div class="sequence-step">
+                    <div class="sequence-num">02</div>
+                    <div class="sequence-content">
+                        <h3>Let it settle</h3>
+                        <p class="body-p">Connections form in the background while you get on with your day.</p>
+                    </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="sequence-step">
+                    <div class="sequence-num">03</div>
+                    <div class="sequence-content">
+                        <h3>Pull the thread</h3>
+                        <p class="body-p">Ask for the thing you almost remember and get the whole cluster back.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Structural Hairline Rule -->
+    <div class="section-rule"><hr></div>
+
+    <!-- 5. Product Detail (Eyebrow: IN THE APP) -->
+    <section class="section" id="product-detail">
+        <div class="container">
+            <span class="eyebrow">IN THE APP</span>
+            <div class="product-detail-grid">
+                <!-- Left: Clean UI Mock in raised card (NO browser chrome, NO device frames) -->
+                <div class="app-mock-card">
+                    <!-- Quick Drop Input -->
+                    <div class="mock-input-row">
+                        <input type="text" id="liveMockInput" class="input-box" placeholder="Drop a thought here..." autocomplete="off">
+                        <button id="liveMockSaveBtn" class="btn-primary" style="padding: 10px 18px; font-size: 14px;">Stash</button>
+                    </div>
+
+                    <!-- Voice Recorder Bar -->
+                    <div class="mock-record-bar">
+                        <div class="mock-record-left">
+                            <button id="liveMockMicBtn" class="mock-mic-btn" aria-label="Record voice thought">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                            </button>
+                            <span id="liveMockStatus" class="mock-status-text">Record voice thought</span>
+                        </div>
+                        <span id="liveMockTimer" class="mock-timer">00:00</span>
+                    </div>
+
+                    <!-- Live Notes Stream inside Mock -->
+                    <div class="mock-stream" id="mockStream">
+                        <div class="mock-thought-item">
+                            <svg class="ring-glyph quiet glyph-dot" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11"/></svg>
+                            <div class="mock-thought-body">
+                                <p>Morning movement before staring at screens makes a huge difference to 3 PM cognitive fatigue.</p>
+                                <span class="mock-thought-meta">Rancho San Antonio · 08:30 AM</span>
+                            </div>
+                        </div>
+                        <div class="mock-thought-item">
+                            <svg class="ring-glyph ochre glyph-dot" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11"/></svg>
+                            <div class="mock-thought-body">
+                                <p>Remind myself to drink more water throughout afternoon walks.</p>
+                                <span class="mock-thought-meta">Mountain View · 02:15 PM</span>
+                            </div>
+                        </div>
+                        <div class="mock-thought-item">
+                            <svg class="ring-glyph petrol glyph-dot" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11"/></svg>
+                            <div class="mock-thought-body">
+                                <p>AI agents shouldn't be chatbot assistants; they should be quiet memory keepers that notice durable patterns.</p>
+                                <span class="mock-thought-meta">Stanford Dish · 05:40 PM</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Copy + Two Ring Glyphs with Captions -->
+                <div class="product-detail-copy">
+                    <h2 class="display-l">Built for the way thought actually moves.</h2>
+                    <p class="body-p">You don't think in folders or databases. You think in fragments, conversations, and half-remembered moments on morning walks. Thought Stash organizes by relationship so you can stay in flow.</p>
+                    
+                    <div class="detail-captions">
+                        <div class="detail-caption-row">
+                            <svg class="ring-glyph ochre" viewBox="0 0 32 32" aria-hidden="true">
+                                <circle cx="16" cy="16" r="11"/>
+                            </svg>
+                            <p>Threads emerge across days and weeks</p>
+                        </div>
+                        <div class="detail-caption-row">
+                            <svg class="ring-glyph petrol" viewBox="0 0 32 32" aria-hidden="true">
+                                <circle cx="16" cy="16" r="11"/>
+                            </svg>
+                            <p>Recall by meaning, not exact keywords</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6. Closing Band (Full-bleed --petrol, centred, Cairn mark in --paper with ochre capstone) -->
+    <section class="closing-band">
+        <div class="container closing-inner">
+            <!-- Cairn mark at 48px in --paper with #C1912B capstone -->
+            <svg class="closing-cairn" viewBox="0 0 96 96" width="48" height="48" role="img" aria-label="Thought Stash Cairn Mark">
+                <g fill="none" stroke="var(--paper)" stroke-width="3">
+                    <ellipse cx="48" cy="80" rx="30" ry="8"/>
+                    <ellipse cx="48" cy="60" rx="23" ry="7.5"/>
+                    <ellipse cx="48" cy="42" rx="16" ry="7"/>
+                </g>
+                <circle cx="48" cy="22" r="5.5" fill="#C1912B"/>
+            </svg>
+            <h2 class="closing-headline">Your ideas deserve better than a notes app you never reopen.</h2>
+            <button class="btn-paper open-stash-btn">Start a stash</button>
+        </div>
+    </section>
+
+    <!-- 7. Footer (--paper-sunk, 96px padding, hairline top) -->
+    <footer class="footer-section">
+        <div class="container">
+            <div class="footer-grid">
+                <!-- Left: Lockup & statement -->
+                <div class="footer-brand">
+                    <a href="/" class="brand-lockup">
+                        <svg viewBox="0 0 96 96" width="32" height="32" role="img" aria-label="Thought Stash">
+                            <g fill="none" stroke="currentColor" stroke-width="3">
+                                <ellipse cx="48" cy="80" rx="30" ry="8"/>
+                                <ellipse cx="48" cy="60" rx="23" ry="7.5"/>
+                                <ellipse cx="48" cy="42" rx="16" ry="7"/>
+                            </g>
+                            <circle cx="48" cy="22" r="5.5" fill="var(--petrol)"/>
+                        </svg>
+                        <div class="brand-wordmark">
+                            <span class="word-thought">thought</span> <span class="word-stash">stash</span>
+                        </div>
+                    </a>
+                    <p class="footer-tagline">A place to dump half-formed thoughts and actually find them again.</p>
+                </div>
+
+                <!-- Column 1: Product -->
+                <div class="footer-col">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="#how-it-works">How it works</a></li>
+                        <li><a href="#how-it-works">The Sequence</a></li>
+                        <li><a href="#heroConstellation">The Constellation</a></li>
+                        <li><a href="#product-detail">Pricing</a></li>
+                    </ul>
+                </div>
+
+                <!-- Column 2: Architecture -->
+                <div class="footer-col">
+                    <h4>Architecture</h4>
+                    <ul>
+                        <li><a href="#what-it-does">Rings & Threads</a></li>
+                        <li><a href="#product-detail">Local Memory</a></li>
+                        <li><a href="#product-detail">Voice Scribe</a></li>
+                        <li><a href="#product-detail">Security</a></li>
+                    </ul>
+                </div>
+
+                <!-- Column 3: Company -->
+                <div class="footer-col">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="#what-it-does">About</a></li>
+                        <li><a href="#product-detail">Journal</a></li>
+                        <li><a href="#product-detail">Privacy</a></li>
+                        <li><a href="#product-detail">Contact</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Bottom Legal Line in --ink-45 -->
+            <div class="footer-bottom">
+                <span class="legal-line">THOUGHT STASH &copy; 2026 &middot; STONE &amp; PAPER &middot; ALL RIGHTS RESERVED</span>
+                <span class="legal-line">QUIET BY DESIGN</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Toast Confirmation (Microcopy: "Stashed.") -->
+    <div id="stashToast" class="toast-notice" role="status" aria-live="polite">Stashed.</div>
+
+    <!-- Full Working Stash Modal Workspace -->
+    <div id="stashModal" class="stash-drawer-backdrop" aria-hidden="true">
+        <div class="stash-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+            <div class="stash-drawer-header">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <svg viewBox="0 0 96 96" width="22" height="22" role="img">
+                        <g fill="none" stroke="currentColor" stroke-width="3">
+                            <ellipse cx="48" cy="80" rx="30" ry="8"/>
+                            <ellipse cx="48" cy="60" rx="23" ry="7.5"/>
+                            <ellipse cx="48" cy="42" rx="16" ry="7"/>
+                        </g>
+                        <circle cx="48" cy="22" r="5.5" fill="var(--petrol)"/>
+                    </svg>
+                    <h3 id="modalTitle">Your Stash</h3>
+                </div>
+                <button id="closeModalBtn" class="drawer-close" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="stash-drawer-body">
+                <!-- Drop Box -->
+                <div>
+                    <span class="eyebrow">DROP A THOUGHT</span>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="modalTextInput" class="input-box" placeholder="Drop the thing you were about to lose..." autocomplete="off">
+                        <button id="modalTextSaveBtn" class="btn-primary">Save</button>
+                    </div>
+                </div>
+
+                <!-- Voice Recording Bar -->
+                <div class="mock-record-bar" style="margin-top: 4px;">
+                    <div class="mock-record-left">
+                        <button id="modalMicBtn" class="mock-mic-btn" aria-label="Record voice note">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                        </button>
+                        <span id="modalRecordStatus" class="mock-status-text">Record voice thought</span>
+                    </div>
+                    <span id="modalTimer" class="mock-timer">00:00</span>
+                </div>
+
+                <!-- Search & Ask Box -->
+                <div style="margin-top: 12px;">
+                    <span class="eyebrow">PULL THE THREAD</span>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="modalSearchInput" class="input-box" placeholder="Ask by what you half-remember..." autocomplete="off">
+                        <button id="modalSearchBtn" class="btn-secondary">Ask</button>
+                    </div>
+                    <div id="modalSearchResult" style="margin-top: 12px; font-size: 14px; color: var(--ink);"></div>
+                </div>
+
+                <!-- Stash Items Feed -->
+                <div style="margin-top: 12px;">
+                    <span class="eyebrow">RECENT THREADS</span>
+                    <div id="modalThoughtsFeed" class="mock-stream">
+                        <div class="loading-microcopy">Looking through your stash...</div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Application Script -->
     <script src="/static/app.js"></script>
 </body>
 </html>
