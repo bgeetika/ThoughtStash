@@ -646,7 +646,17 @@ async def chat(req: ChatRequest):
             (db.cosine(query_emb, t.get("embedding", [])), t) for t in all_thoughts
         ]
         scored.sort(key=lambda x: x[0], reverse=True)
-        newly_retrieved = [t for _, t in scored[:6]]
+        top_score = scored[0][0] if scored else 0.0
+
+        # Dynamic relevance: only keep notes with genuine semantic similarity, up to max 6
+        newly_retrieved = [
+            t for sim, t in scored
+            if (sim >= 0.55 and sim >= top_score * 0.85)
+        ][:6]
+
+        # Fallback: if none exceed high threshold, include top 1 if it has moderate similarity
+        if not newly_retrieved and scored and top_score >= 0.40:
+            newly_retrieved = [scored[0][1]]
     except Exception:
         newly_retrieved = all_thoughts[:6]
 

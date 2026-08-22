@@ -257,8 +257,10 @@ Given a NEW thought and dynamically retrieved RELEVANT past thoughts (spanning d
 """
 
 
-def _sync_retrieve_context(new_thought: dict, max_items: int = 12) -> list[dict]:
-    """Retrieve semantically relevant + temporal thoughts across infinite horizons."""
+def _sync_retrieve_context(new_thought: dict, max_items: int = 8) -> list[dict]:
+    """Retrieve semantically relevant + temporal thoughts across infinite horizons.
+    Only pulls thoughts that meet relevance threshold, up to an upper limit.
+    """
     all_thoughts = db.get_thoughts_with_embeddings()
     if not all_thoughts:
         return []
@@ -275,14 +277,25 @@ def _sync_retrieve_context(new_thought: dict, max_items: int = 12) -> list[dict]
     scored = [(db.cosine(new_emb, t.get("embedding", [])), t) for t in candidates]
     scored.sort(key=lambda x: x[0], reverse=True)
 
-    # Top 8 semantically similar
-    top_similar = [t for _, t in scored[:8]]
-    similar_ids = {t["id"] for t in top_similar}
+    top_score = scored[0][0] if scored else 0.0
 
-    # Plus top 4 most recent (to ensure recency awareness)
-    recents = [t for t in candidates if t["id"] not in similar_ids][:4]
+    # Dynamic relevance: only keep candidates with genuine similarity (>= 0.55 and within 85% of top)
+    similar = [
+        t for sim, t in scored
+        if (sim >= 0.55 and sim >= top_score * 0.85)
+    ][:max_items]
 
-    combined = top_similar + recents
+    # If no candidates meet high threshold, include top 1 if it has moderate similarity
+    if not similar and scored and top_score >= 0.40:
+        similar = [scored[0][1]]
+
+    similar_ids = {t["id"] for t in similar}
+
+    # Add 1-2 most recent thoughts for temporal continuity if room remains
+    remaining_slots = max(0, max_items - len(similar))
+    recents = [t for t in candidates if t["id"] not in similar_ids][:min(2, remaining_slots)]
+
+    combined = similar + recents
     combined.sort(key=lambda x: x.get("created_at", ""), reverse=True)
     return combined
 
