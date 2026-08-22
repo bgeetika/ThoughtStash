@@ -302,8 +302,8 @@ function init3DAudioOrb() {
     const aura2Mesh = new THREE.Mesh(aura2Geo, aura2Mat);
     orbGroup.add(aura2Mesh);
 
-    // Earthy Matte Palette: Petrol, Ochre, Terracotta, Sage, Warm Amber
-    const nodeColors = [0x1D4E4B, 0xB3732A, 0xB8573D, 0x4A6B56, 0xC1912B];
+    // Earthy Matte Palette: Slate Indigo, Ochre, Terracotta, Forest Green, Warm Amber
+    const nodeColors = [0x2D5B88, 0xB3732A, 0xB8573D, 0x3F7A56, 0xC1912B];
     const nodeMeshes = [];
     orbNodes = [];
     orbEdges = [];
@@ -977,7 +977,7 @@ async function init3DGraph() {
             } else {
                 let basePos = new THREE.Vector3(0, 0, 0);
                 const col = (n.color || "").toLowerCase();
-                if (col.includes("1d4e4b")) basePos = themePillars["theme_tech"];
+                if (col.includes("2d5b88") || col.includes("1d4e4b")) basePos = themePillars["theme_tech"];
                 else if (col.includes("b3732a") || col.includes("c78844")) basePos = themePillars["theme_work"];
                 else if (col.includes("b8573d") || col.includes("c26d4d")) basePos = themePillars["theme_family"];
                 else basePos = themePillars["theme_health"];

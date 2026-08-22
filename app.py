@@ -467,13 +467,13 @@ async def get_map_points():
     def get_category_meta(topics, transcript):
         text = " ".join(topics).lower() + " " + transcript.lower()
         if any(k in text for k in ["ai", "agent", "model", "memory", "vector", "slm", "edge", "architecture"]):
-            return "AI & Systems", "#1D4E4B", "🤖"
+            return "AI & Systems", "#2D5B88", "🤖"
         elif any(k in text for k in ["meeting", "velocity", "team", "retro", "sprint", "mentor", "leadership", "offsite"]):
             return "Strategy & Work", "#B3732A", "💼"
         elif any(k in text for k in ["family", "mom", "dad", "niece", "anniversary", "birthday", "party", "piñata", "ananya", "manya"]):
             return "Family & Events", "#B8573D", "👨‍👩‍👧"
         else:
-            return "Health & Daily Walks", "#4A6B56", "🌿"
+            return "Health & Daily Walks", "#3F7A56", "🌿"
 
     for t in all_thoughts:
         if t.get("latitude") is not None and t.get("longitude") is not None:
@@ -508,23 +508,23 @@ async def get_neural_graph():
 
     # Theme pillar nodes
     theme_pillars = [
-        {"id": "theme_tech", "label": "AI Agents & Systems", "group": "theme", "color": "#1D4E4B", "size": 32, "font": {"size": 14, "color": "#14161A", "face": "General Sans"}},
+        {"id": "theme_tech", "label": "AI Agents & Systems", "group": "theme", "color": "#2D5B88", "size": 32, "font": {"size": 14, "color": "#14161A", "face": "General Sans"}},
         {"id": "theme_work", "label": "Engineering Strategy", "group": "theme", "color": "#B3732A", "size": 32, "font": {"size": 14, "color": "#14161A", "face": "General Sans"}},
         {"id": "theme_family", "label": "Family & Celebrations", "group": "theme", "color": "#B8573D", "size": 32, "font": {"size": 14, "color": "#14161A", "face": "General Sans"}},
-        {"id": "theme_health", "label": "Health & Mindfulness", "group": "theme", "color": "#4A6B56", "size": 32, "font": {"size": 14, "color": "#14161A", "face": "General Sans"}}
+        {"id": "theme_health", "label": "Health & Mindfulness", "group": "theme", "color": "#3F7A56", "size": 32, "font": {"size": 14, "color": "#14161A", "face": "General Sans"}}
     ]
     nodes.extend(theme_pillars)
 
     def get_category_id(topics, transcript):
         text = " ".join(topics).lower() + " " + transcript.lower()
         if any(k in text for k in ["ai", "agent", "model", "memory", "vector", "slm", "edge", "architecture"]):
-            return "theme_tech", "#1D4E4B"
+            return "theme_tech", "#2D5B88"
         elif any(k in text for k in ["meeting", "velocity", "team", "retro", "sprint", "mentor", "leadership", "offsite"]):
             return "theme_work", "#B3732A"
         elif any(k in text for k in ["family", "mom", "dad", "niece", "anniversary", "birthday", "party", "piñata", "ananya", "manya"]):
             return "theme_family", "#B8573D"
         else:
-            return "theme_health", "#4A6B56"
+            return "theme_health", "#3F7A56"
 
     thought_nodes = []
     for t in all_thoughts:
