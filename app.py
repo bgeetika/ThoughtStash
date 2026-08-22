@@ -662,7 +662,6 @@ async def chat(req: ChatRequest):
     summary = chat_result.get("summary", "")
     key_points = chat_result.get("key_points", [])
     suggested_action = chat_result.get("suggested_action")
-    follow_up_questions = chat_result.get("follow_up_questions", [])
 
     # Format a clean plaintext representation for message history
     history_lines = [summary]
@@ -680,7 +679,6 @@ async def chat(req: ChatRequest):
         "summary": summary,
         "key_points": key_points,
         "suggested_action": suggested_action,
-        "follow_up_questions": follow_up_questions,
         "response": history_text
     }
 

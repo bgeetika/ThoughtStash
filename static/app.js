@@ -9,6 +9,7 @@ let audioChunks = [];
 let recordTimer = null;
 let seconds = 0;
 let currentGeo = { latitude: 37.4419, longitude: -122.1430, locationName: "Palo Alto, CA", isManual: false };
+let currentConversationId = 'conv_' + Date.now();
 let chatHistory = [];
 let leafletMap = null;
 let mapMarkers = [];
@@ -1000,18 +1001,50 @@ function renderPatternsDashboard(data) {
 
 // ── 10. Ask / Chat ─────────────────────────────────────────────────
 
-chatSendBtn.addEventListener('click', sendChatMessage);
+const newChatBtn = document.getElementById('newChatBtn');
+
+function bindPromptChips() {
+    document.querySelectorAll('.prompt-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const text = chip.dataset.prompt;
+            if (text) {
+                sendChatMessage(text);
+            }
+        });
+    });
+}
+
+bindPromptChips();
+
+if (newChatBtn) {
+    newChatBtn.addEventListener('click', () => {
+        currentConversationId = 'conv_' + Date.now();
+        chatHistory = [];
+        chatMessages.innerHTML = `
+            <div class="chat-bubble assistant">
+                <div class="bubble-avatar">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                </div>
+                <div class="bubble-body">
+                    <div class="bubble-summary">Hi! Ask me anything about your past notes, walks, or ideas.</div>
+                    <div class="prompt-chips-row">
+                        <button class="prompt-chip" type="button" data-prompt="What have I noted about hydration and health?">Hydration habits</button>
+                        <button class="prompt-chip" type="button" data-prompt="What were my ideas about AI agents and memory?">AI agent ideas</button>
+                        <button class="prompt-chip" type="button" data-prompt="What did I plan for my parents' anniversary?">Parents' anniversary</button>
+                        <button class="prompt-chip" type="button" data-prompt="What notes did I record during my recent walks?">Recent walk notes</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        bindPromptChips();
+        chatInput.value = '';
+        chatInput.focus();
+    });
+}
+
+chatSendBtn.addEventListener('click', () => sendChatMessage());
 chatInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) sendChatMessage();
-});
-
-document.querySelectorAll('.prompt-chip, .followup-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-        const text = chip.dataset.question || chip.dataset.prompt;
-        if (text) {
-            sendChatMessage(text);
-        }
-    });
 });
 
 async function sendChatMessage(customQuery) {
@@ -1028,7 +1061,11 @@ async function sendChatMessage(customQuery) {
         const res = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message, history: chatHistory })
+            body: JSON.stringify({
+                conversation_id: currentConversationId,
+                message: message,
+                history: chatHistory
+            })
         });
         const data = await res.json();
 
@@ -1065,32 +1102,12 @@ function renderAssistantResponse(data, bubbleEl) {
         html += `<div class="bubble-action"><span>💡</span> <div>${escapeHtml(data.suggested_action)}</div></div>`;
     }
 
-    if (data.follow_up_questions && data.follow_up_questions.length > 0) {
-        html += `
-            <div class="bubble-followups">
-                <span class="followup-label">Follow-up questions</span>
-                <div class="followup-chips">
-                    ${data.follow_up_questions.map(q => `<button class="followup-chip" type="button" data-question="${escapeHtml(q)}">${escapeHtml(q)}</button>`).join('')}
-                </div>
-            </div>
-        `;
-    }
-
     // Fallback if data was plain string
     if (!html && data.response) {
         html = `<p>${escapeHtml(data.response)}</p>`;
     }
 
     body.innerHTML = html;
-
-    // Attach click listeners to new follow-up chips
-    body.querySelectorAll('.followup-chip').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const q = btn.dataset.question;
-            if (q) sendChatMessage(q);
-        });
-    });
-
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 

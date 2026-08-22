@@ -287,6 +287,10 @@
                             <h3>Ask Your Notes</h3>
                             <p class="chat-sub">Search and ask questions across your recorded thoughts.</p>
                         </div>
+                        <button id="newChatBtn" class="new-chat-btn" title="Start a new conversation">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <span>New Chat</span>
+                        </button>
                     </div>
 
                     <div id="chatMessages" class="chat-thread">
@@ -296,13 +300,11 @@
                             </div>
                             <div class="bubble-body">
                                 <div class="bubble-summary">Hi! Ask me anything about your past notes, walks, or ideas.</div>
-                                <div class="bubble-followups">
-                                    <span class="followup-label">Try asking:</span>
-                                    <div class="followup-chips">
-                                        <button class="followup-chip" type="button" data-question="Why do I feel so tired all the time?">Why do I feel tired?</button>
-                                        <button class="followup-chip" type="button" data-question="What were my ideas about AI agents and memory?">AI agent ideas</button>
-                                        <button class="followup-chip" type="button" data-question="What did I plan for my parents' 40th anniversary?">Parents' anniversary</button>
-                                    </div>
+                                <div class="prompt-chips-row">
+                                    <button class="prompt-chip" type="button" data-prompt="What have I noted about hydration and health?">Hydration habits</button>
+                                    <button class="prompt-chip" type="button" data-prompt="What were my ideas about AI agents and memory?">AI agent ideas</button>
+                                    <button class="prompt-chip" type="button" data-prompt="What did I plan for my parents' anniversary?">Parents' anniversary</button>
+                                    <button class="prompt-chip" type="button" data-prompt="What notes did I record during my recent walks?">Recent walk notes</button>
                                 </div>
                             </div>
                         </div>
