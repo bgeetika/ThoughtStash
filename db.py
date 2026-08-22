@@ -4,12 +4,15 @@ Tables:
 - thoughts: raw episodic recordings and structured thoughts
 - themes: durable, evolving cross-session themes
 - daily_rollups: aggregated daily memory summaries
+- conversations: persisted chat sessions with pinned context
+- messages: turn-by-turn chat messages
 """
 
 import json
 import os
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
+import numpy as np
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "data", "mindtrail.db")
 
@@ -22,8 +25,36 @@ def get_db():
     return conn
 
 
+def cosine(a, b) -> float:
+    """Canonical, safe cosine similarity between two vector embeddings."""
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    arr_a = np.array(a, dtype=float)
+    arr_b = np.array(b, dtype=float)
+    norm_a = np.linalg.norm(arr_a)
+    norm_b = np.linalg.norm(arr_b)
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return float(np.dot(arr_a, arr_b) / (norm_a * norm_b + 1e-8))
+
+
+def normalize_timestamp(ts: str | None = None) -> str:
+    """Normalize any timestamp string to standard ISO UTC format."""
+    if not ts:
+        return datetime.now(timezone.utc).isoformat()
+    try:
+        # If already ends with Z or has offset, parse and convert
+        clean_ts = ts.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(clean_ts)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.isoformat()
+    except Exception:
+        return ts
+
+
 def init_db():
-    """Initialize schema with durability and hierarchical memory tables."""
+    """Initialize schema with durability, hierarchical memory, and chat persistence."""
     conn = get_db()
     
     # 1. Thoughts table (Raw episodic memory)
@@ -79,6 +110,28 @@ def init_db():
         )
     """)
 
+    # 4. Conversations table (Chat persistence)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS conversations (
+            id TEXT PRIMARY KEY,
+            title TEXT,
+            created_at TEXT NOT NULL,
+            pinned_thought_ids TEXT
+        )
+    """)
+
+    # 5. Messages table (Turn-by-turn chat history)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id TEXT NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (conversation_id) REFERENCES conversations(id)
+        )
+    """)
+
     # Migrations for existing databases
     alter_cols = [
         ("thoughts", "thought_type", "TEXT"),
@@ -95,7 +148,7 @@ def init_db():
         try:
             conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}")
         except sqlite3.OperationalError:
-            pass  # column already exists
+            pass
 
     conn.commit()
     conn.close()
@@ -107,12 +160,13 @@ def init_db():
 def create_pending_thought(audio_path: str, created_at: str, lat: float | None = None, lon: float | None = None, loc_name: str | None = None) -> int:
     """Save an initial pending thought record immediately so audio is NEVER orphaned."""
     conn = get_db()
+    norm_ts = normalize_timestamp(created_at)
     cursor = conn.execute(
         """
         INSERT INTO thoughts (created_at, audio_path, latitude, longitude, location_name, status)
         VALUES (?, ?, ?, ?, ?, 'pending')
         """,
-        (created_at, audio_path, lat, lon, loc_name),
+        (norm_ts, audio_path, lat, lon, loc_name),
     )
     conn.commit()
     thought_id = cursor.lastrowid
@@ -124,6 +178,7 @@ def save_thought(thought_data: dict) -> int:
     """Save or update a processed thought."""
     conn = get_db()
     existing_id = thought_data.get("id")
+    norm_ts = normalize_timestamp(thought_data.get("created_at"))
 
     if existing_id:
         conn.execute(
@@ -150,7 +205,7 @@ def save_thought(thought_data: dict) -> int:
             WHERE id = ?
             """,
             (
-                thought_data.get("created_at", datetime.now().isoformat()),
+                norm_ts,
                 thought_data.get("audio_path"),
                 thought_data.get("transcript"),
                 thought_data.get("summary"),
@@ -182,7 +237,7 @@ def save_thought(thought_data: dict) -> int:
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', ?)
             """,
             (
-                thought_data.get("created_at", datetime.now().isoformat()),
+                norm_ts,
                 thought_data.get("audio_path"),
                 thought_data.get("transcript"),
                 thought_data.get("summary"),
@@ -205,6 +260,12 @@ def save_thought(thought_data: dict) -> int:
 
     conn.commit()
     conn.close()
+
+    # Automatically update daily rollup for this thought's date
+    if norm_ts:
+        date_str = norm_ts[:10]
+        update_daily_rollup_for_date(date_str)
+
     return thought_id
 
 
@@ -311,8 +372,9 @@ def get_thought_connections(thought_id: int) -> dict | None:
 
 
 def upsert_theme(name: str, description: str, trend: str, thought_id: int, timestamp: str):
-    """Upsert a durable theme with associated thoughts."""
+    """Upsert a durable theme with rich description and associated thoughts."""
     conn = get_db()
+    norm_ts = normalize_timestamp(timestamp)
     row = conn.execute("SELECT * FROM themes WHERE name = ?", (name,)).fetchone()
     if row:
         ids = json.loads(row["associated_thought_ids"] or "[]")
@@ -328,7 +390,7 @@ def upsert_theme(name: str, description: str, trend: str, thought_id: int, times
                 associated_thought_ids = ?
             WHERE name = ?
             """,
-            (description, trend, timestamp, json.dumps(ids), name),
+            (description, trend, norm_ts, json.dumps(ids), name),
         )
     else:
         conn.execute(
@@ -336,7 +398,7 @@ def upsert_theme(name: str, description: str, trend: str, thought_id: int, times
             INSERT INTO themes (name, description, frequency, trend, first_seen, last_seen, associated_thought_ids)
             VALUES (?, ?, 1, ?, ?, ?, ?)
             """,
-            (name, description, trend, timestamp, timestamp, json.dumps([thought_id])),
+            (name, description, trend, norm_ts, norm_ts, json.dumps([thought_id])),
         )
     conn.commit()
     conn.close()
@@ -357,12 +419,40 @@ def get_all_themes() -> list[dict]:
     return themes
 
 
-# ── Daily Rollups Layer ─────────────────────────────────────────────
+# ── Daily Rollups Layer (Hierarchical Consolidation) ────────────────
 
 
-def upsert_daily_rollup(date_str: str, summary: str, takeaways: list[str], count: int, mood_summary: str, locations: list[str]):
-    """Store or update daily rollup summary."""
+def update_daily_rollup_for_date(date_str: str):
+    """Calculate and upsert daily summary rollup for a given YYYY-MM-DD date."""
     conn = get_db()
+    rows = conn.execute(
+        "SELECT summary, key_insights, mood, location_name FROM thoughts WHERE created_at LIKE ? AND status = 'completed'",
+        (f"{date_str}%",),
+    ).fetchall()
+    
+    if not rows:
+        conn.close()
+        return
+
+    count = len(rows)
+    all_insights = []
+    locations = set()
+    moods = []
+    summaries = []
+
+    for r in rows:
+        if r["summary"]:
+            summaries.append(r["summary"])
+        if r["mood"]:
+            moods.append(r["mood"])
+        if r["location_name"]:
+            locations.add(r["location_name"])
+        insights = json.loads(r["key_insights"] or "[]")
+        all_insights.extend(insights)
+
+    combined_summary = f"{count} thought(s) recorded: " + "; ".join(summaries[:3])
+    mood_summary = f"Predominantly {moods[0]}" if moods else "reflective"
+
     conn.execute(
         """
         INSERT INTO daily_rollups (date, summary, key_takeaways, thought_count, mood_summary, locations_visited)
@@ -376,11 +466,11 @@ def upsert_daily_rollup(date_str: str, summary: str, takeaways: list[str], count
         """,
         (
             date_str,
-            summary,
-            json.dumps(takeaways),
+            combined_summary,
+            json.dumps(all_insights[:5]),
             count,
             mood_summary,
-            json.dumps(locations),
+            json.dumps(list(locations)),
         ),
     )
     conn.commit()
@@ -401,3 +491,61 @@ def get_recent_daily_rollups(limit: int = 30) -> list[dict]:
         r["locations_visited"] = json.loads(r["locations_visited"] or "[]")
         rollups.append(r)
     return rollups
+
+
+# ── Server-Side Chat Persistence ────────────────────────────────────
+
+
+def get_or_create_conversation(conv_id: str = "default", title: str = "Thought Journal Chat") -> dict:
+    """Retrieve or initialize a persistent conversation session."""
+    conn = get_db()
+    row = conn.execute("SELECT * FROM conversations WHERE id = ?", (conv_id,)).fetchone()
+    if not row:
+        now_ts = datetime.now(timezone.utc).isoformat()
+        conn.execute(
+            "INSERT INTO conversations (id, title, created_at, pinned_thought_ids) VALUES (?, ?, ?, '[]')",
+            (conv_id, title, now_ts),
+        )
+        conn.commit()
+        row = conn.execute("SELECT * FROM conversations WHERE id = ?", (conv_id,)).fetchone()
+    
+    conv = dict(row)
+    conv["pinned_thought_ids"] = json.loads(conv.get("pinned_thought_ids") or "[]")
+    conn.close()
+    return conv
+
+
+def update_conversation_pinned_thoughts(conv_id: str, thought_ids: list[int]):
+    """Update the pinned thought IDs for a conversation to maintain context continuity."""
+    conn = get_db()
+    conn.execute(
+        "UPDATE conversations SET pinned_thought_ids = ? WHERE id = ?",
+        (json.dumps(thought_ids), conv_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def save_message(conv_id: str, role: str, content: str) -> int:
+    """Save a turn in the conversation history."""
+    conn = get_db()
+    now_ts = datetime.now(timezone.utc).isoformat()
+    cursor = conn.execute(
+        "INSERT INTO messages (conversation_id, role, content, created_at) VALUES (?, ?, ?, ?)",
+        (conv_id, role, content, now_ts),
+    )
+    conn.commit()
+    msg_id = cursor.lastrowid
+    conn.close()
+    return msg_id
+
+
+def get_conversation_messages(conv_id: str, limit: int = 50) -> list[dict]:
+    """Retrieve turn-by-turn chat history for a conversation."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT role, content, created_at FROM messages WHERE conversation_id = ? ORDER BY id ASC LIMIT ?",
+        (conv_id, limit),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]

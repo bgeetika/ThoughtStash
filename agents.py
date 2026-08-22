@@ -6,6 +6,7 @@ Oracle:    Context-aware thinking partner grounded in hierarchical memory
 """
 
 import asyncio
+from datetime import datetime, timezone
 import json
 import os
 import time
@@ -22,7 +23,13 @@ import db
 load_dotenv()
 
 DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
-FALLBACK_MODELS = [DEFAULT_MODEL, "gemini-3.6-flash", "gemini-3.7-flash", "gemini-3.5-flash"]
+FALLBACK_MODELS = [
+    DEFAULT_MODEL,
+    "gemini-3.6-flash",
+    "gemini-3.7-flash",
+    "gemini-3.5-flash",
+    "gemini-flash-latest",
+]
 # Deduplicate while preserving order
 FALLBACK_MODELS = list(dict.fromkeys(FALLBACK_MODELS))
 EMBEDDING_MODELS = ["gemini-embedding-001", "gemini-embedding-2"]
@@ -73,7 +80,6 @@ def _sync_generate_with_fallback(contents, config=None):
             )
         except Exception as e:
             last_err = e
-            # Immediate failover to next model in fallback list
             continue
     raise last_err or RuntimeError("Failed to generate content with any model")
 
@@ -83,8 +89,8 @@ async def generate_with_fallback(contents, config=None):
     return await asyncio.to_thread(_sync_generate_with_fallback, contents, config)
 
 
-def _sync_get_embedding(text: str) -> list[float]:
-    """Synchronous embedding computation."""
+def _sync_get_embedding(text: str) -> tuple[list[float], str]:
+    """Synchronous embedding computation returning (vector, model_name)."""
     client = get_client()
     last_err = None
     for emb_model in EMBEDDING_MODELS:
@@ -93,20 +99,20 @@ def _sync_get_embedding(text: str) -> list[float]:
                 model=emb_model,
                 contents=text,
             )
-            return list(result.embeddings[0].values)
+            return list(result.embeddings[0].values), emb_model
         except Exception as e:
             last_err = e
             continue
     raise last_err or RuntimeError("Failed to compute embedding")
 
 
-async def get_embedding_async(text: str) -> list[float]:
-    """Non-blocking async embedding computation."""
+async def get_embedding_async(text: str) -> tuple[list[float], str]:
+    """Non-blocking async embedding computation returning (vector, model_name)."""
     return await asyncio.to_thread(_sync_get_embedding, text)
 
 
-def get_embedding(text: str) -> list[float]:
-    """Synchronous embedding helper."""
+def get_embedding(text: str) -> tuple[list[float], str]:
+    """Synchronous embedding helper returning (vector, model_name)."""
     return _sync_get_embedding(text)
 
 
@@ -140,6 +146,7 @@ class ConnectionItem(BaseModel):
 
 class ThemeItem(BaseModel):
     theme: str = Field(description="Theme name")
+    description: str = Field(description="Clear, informative description of why this theme recurs across thoughts")
     count: int = Field(default=1, description="Observed frequency")
     trend: Literal["growing", "stable", "declining", "resolved"] = Field(default="growing", description="Trend direction")
 
@@ -157,6 +164,39 @@ class ConnectorOutputSchema(BaseModel):
     spatio_temporal_insights: str = Field(default="", description="Observations on walk location & time routines")
     proactive_insight: str = Field(default="", description="Proactive synthesis the user did not explicitly ask for")
     thinking_evolution: str = Field(default="", description="How the user's thinking has progressed over time")
+
+
+# Full Pattern Report Pydantic Schema
+class RecurringThemeReport(BaseModel):
+    theme: str
+    frequency: int
+    description: str
+
+
+class EmergingPatternReport(BaseModel):
+    pattern: str
+    first_seen: str
+    evidence: str
+
+
+class ConnectionReport(BaseModel):
+    thought_a: str
+    thought_b: str
+    connection: str
+
+
+class MoodTrajectoryReport(BaseModel):
+    trend: Literal["improving", "declining", "stable", "fluctuating"]
+    summary: str
+
+
+class FullPatternReport(BaseModel):
+    recurring_themes: list[RecurringThemeReport] = Field(default_factory=list)
+    emerging_patterns: list[EmergingPatternReport] = Field(default_factory=list)
+    connections: list[ConnectionReport] = Field(default_factory=list)
+    mood_trajectory: MoodTrajectoryReport
+    recommendations: list[str] = Field(default_factory=list)
+    one_line_summary: str
 
 
 # ── Agent 1: SCRIBE ─────────────────────────────────────────────────
@@ -210,7 +250,7 @@ CONNECTOR_PROMPT = """You are the Connector agent of ThoughtStash — an autonom
 Given a NEW thought and dynamically retrieved RELEVANT past thoughts (spanning days, weeks, or months) and DURABLE THEMES:
 
 1. Find CONNECTIONS to past thoughts (similarities, contradictions, evolutions)
-2. Update RECURRING THEMES
+2. Update RECURRING THEMES with rich, informative descriptions explaining why the theme recurs
 3. Detect SPATIO-TEMPORAL PATTERNS (location routines, time-of-day insights)
 4. Notice CONTRADICTIONS (ideas conflicting with past conclusions)
 5. Track THOUGHT EVOLUTION (how perspective has changed over time)
@@ -218,13 +258,12 @@ Given a NEW thought and dynamically retrieved RELEVANT past thoughts (spanning d
 """
 
 
-def _retrieve_context_for_connector(new_thought: dict, max_items: int = 12) -> list[dict]:
-    """Dynamic retrieval: finds semantically relevant + recent thoughts across infinite horizons."""
+def _sync_retrieve_context(new_thought: dict, max_items: int = 12) -> list[dict]:
+    """Retrieve semantically relevant + temporal thoughts across infinite horizons."""
     all_thoughts = db.get_thoughts_with_embeddings()
     if not all_thoughts:
         return []
 
-    # Exclude current thought
     candidates = [t for t in all_thoughts if t.get("id") != new_thought.get("id")]
     if not candidates:
         return []
@@ -233,17 +272,8 @@ def _retrieve_context_for_connector(new_thought: dict, max_items: int = 12) -> l
     if not new_emb:
         return candidates[:max_items]
 
-    def cosine(a, b):
-        if not a or not b or len(a) != len(b):
-            return 0.0
-        a, b = np.array(a, dtype=float), np.array(b, dtype=float)
-        norm = np.linalg.norm(a) * np.linalg.norm(b)
-        if norm == 0:
-            return 0.0
-        return float(np.dot(a, b) / (norm + 1e-8))
-
-    # Score by similarity
-    scored = [(cosine(new_emb, t.get("embedding", [])), t) for t in candidates]
+    # Score by similarity using canonical db.cosine
+    scored = [(db.cosine(new_emb, t.get("embedding", [])), t) for t in candidates]
     scored.sort(key=lambda x: x[0], reverse=True)
 
     # Top 8 semantically similar
@@ -258,10 +288,15 @@ def _retrieve_context_for_connector(new_thought: dict, max_items: int = 12) -> l
     return combined
 
 
+async def retrieve_context_for_connector(new_thought: dict, max_items: int = 12) -> list[dict]:
+    """Non-blocking async retrieval for Connector."""
+    return await asyncio.to_thread(_sync_retrieve_context, new_thought, max_items)
+
+
 async def connector_analyze(new_thought: dict, past_thoughts: list[dict] | None = None) -> dict:
     """Connector agent: autonomously finds patterns using dynamic memory retrieval."""
     if past_thoughts is None:
-        retrieved_past = _retrieve_context_for_connector(new_thought)
+        retrieved_past = await retrieve_context_for_connector(new_thought)
     else:
         retrieved_past = past_thoughts
 
@@ -312,15 +347,15 @@ async def connector_analyze(new_thought: dict, past_thoughts: list[dict] | None 
 
     result = json.loads(response.text)
 
-    # Incrementally update durable themes in SQLite
+    # Incrementally update durable themes in SQLite with real description
     if new_thought.get("id"):
         for th in result.get("recurring_themes", []):
             db.upsert_theme(
                 name=th["theme"],
-                description=f"Theme around {th['theme']}",
+                description=th.get("description") or f"Recurring observations around {th['theme']}",
                 trend=th.get("trend", "growing"),
                 thought_id=new_thought["id"],
-                timestamp=new_thought.get("created_at", datetime.now().isoformat()),
+                timestamp=new_thought.get("created_at") or datetime.now(timezone.utc).isoformat(),
             )
 
     return result
@@ -330,14 +365,16 @@ async def connector_analyze(new_thought: dict, past_thoughts: list[dict] | None 
 
 
 async def connector_full_analysis(thoughts: list[dict]) -> dict:
-    """Full pattern analysis with hierarchical summarization to prevent context explosion."""
+    """Full pattern analysis with hierarchical summarization and strict response_schema."""
     durable_themes = db.get_all_themes()
     recent_rollups = db.get_recent_daily_rollups(14)
 
-    # Use summaries instead of full transcripts if thought count > 15
-    use_compact = len(thoughts) > 15
+    # Bound thoughts input to max 30 items to prevent context explosion
+    bounded_thoughts = thoughts[:30]
+    use_compact = len(bounded_thoughts) > 10
+
     thoughts_text = ""
-    for i, t in enumerate(thoughts):
+    for i, t in enumerate(bounded_thoughts):
         t_loc = t.get("location_name") or "Unknown location"
         thoughts_text += f"\n--- Thought {i+1} ({t.get('created_at', '?')} @ {t_loc}) [{t.get('thought_type', 'thought')}] ---\n"
         thoughts_text += f"Summary: {t.get('summary', 'N/A')}\n"
@@ -347,41 +384,34 @@ async def connector_full_analysis(thoughts: list[dict]) -> dict:
             thoughts_text += f"Key Insights: {', '.join(t.get('key_insights', []))}\n"
             thoughts_text += f"Transcript: {t.get('transcript', 'N/A')}\n"
 
+    rollup_text = ""
+    if recent_rollups:
+        rollup_text = "## RECENT DAILY ROLLUPS:\n"
+        for r in recent_rollups[:7]:
+            rollup_text += f"- **{r['date']}** ({r['thought_count']} thoughts, {r['mood_summary']}): {r['summary']}\n"
+
     prompt = f"""You are the Connector agent running a COMPREHENSIVE MULTI-WEEK SYNTHESIS.
-Analyze the user's historical thoughts and durable themes:
+Analyze the user's historical thoughts, daily rollups, and durable themes:
 
 Durable Themes in Memory:
 {json.dumps(durable_themes, indent=2) if durable_themes else "None"}
 
-Historical Thoughts Stream:
-{thoughts_text}
+{rollup_text}
 
-Respond in this exact JSON format:
-{{
-    "recurring_themes": [
-        {{"theme": "name", "frequency": 0, "description": "why this keeps coming up"}}
-    ],
-    "emerging_patterns": [
-        {{"pattern": "description", "first_seen": "date", "evidence": "supporting thoughts"}}
-    ],
-    "connections": [
-        {{"thought_a": "brief", "thought_b": "brief", "connection": "how they relate"}}
-    ],
-    "mood_trajectory": {{
-        "trend": "improving/declining/stable/fluctuating",
-        "summary": "description"
-    }},
-    "recommendations": ["recommendation1", "recommendation2"],
-    "one_line_summary": "In one sentence, here is what has been on your mind..."
-}}
+Historical Thoughts Stream ({len(bounded_thoughts)} entries):
+{thoughts_text}
 """
-    response = await generate_with_fallback(contents=[prompt])
+    config = types.GenerateContentConfig(
+        response_mime_type="application/json",
+        response_schema=FullPatternReport,
+    )
+
+    response = await generate_with_fallback(
+        contents=[prompt],
+        config=config,
+    )
     
-    # Strip backticks if any
-    text = response.text.strip()
-    if text.startswith("```"):
-        text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
-    return json.loads(text)
+    return json.loads(response.text)
 
 
 # ── Agent 3: ORACLE (Context Chat with Hierarchical Memory) ─────────
@@ -396,7 +426,7 @@ KEY BEHAVIORS:
 - Be proactive — suggest connections the user hasn't noticed
 - If asked "what have I been thinking about?" give a rich, insightful answer grounded in time and place
 - If the user's thinking has evolved on a topic, trace that evolution
-- Be warm, conversational, and genuinely helpful — you're a true thinking partner
+- Maintain conversational continuity with prior turns
 
 CONTEXT — User's thought history:
 {context}

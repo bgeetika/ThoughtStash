@@ -10,13 +10,12 @@ import asyncio
 import json
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-import numpy as np
 from pydantic import BaseModel
 
 import agents
@@ -34,7 +33,19 @@ STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 AUDIO_DIR = os.path.join(os.path.dirname(__file__), "data", "audio")
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
-# In-memory store for latest connector insights (per-session)
+# Retained set of background task handles to prevent garbage collection mid-flight
+background_tasks: set[asyncio.Task] = set()
+
+
+def run_background_task(coro):
+    """Run an async background task safely without GC dropping it."""
+    task = asyncio.create_task(coro)
+    background_tasks.add(task)
+    task.add_done_callback(background_tasks.discard)
+    return task
+
+
+# In-memory store for latest connector insights
 latest_connector_insights: dict = {}
 
 # Serve the static directory
@@ -64,12 +75,12 @@ async def create_thought(
     1. Audio is saved to disk with collision-proof UUID
     2. Pending thought record created in SQLite immediately (no orphaned files)
     3. Scribe processes audio with structured schema
-    4. On success: marked completed with vector embedding
+    4. On success: marked completed with vector embedding & actual model provenance
     5. On failure: marked failed_transcription with error reason (reprocessable)
-    6. Connector runs autonomously in background
+    6. Connector runs autonomously in retained background task
     """
     audio_bytes = await audio.read()
-    created_at = client_timestamp or datetime.now().isoformat()
+    created_at = db.normalize_timestamp(client_timestamp or datetime.now(timezone.utc).isoformat())
 
     # Determine file extension safely
     ctype = audio.content_type or ""
@@ -85,7 +96,7 @@ async def create_thought(
 
     # Collision-proof filename with UUID
     unique_id = uuid.uuid4().hex[:8]
-    ts_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    ts_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     audio_path = os.path.join(AUDIO_DIR, f"thought_{ts_str}_{unique_id}.{ext}")
 
     with open(audio_path, "wb") as f:
@@ -133,11 +144,11 @@ async def create_thought(
     ):
         final_location_name = f"{latitude:.4f}, {longitude:.4f}"
 
-    # 3. Vector Embedding
+    # 3. Vector Embedding with True Model Provenance
     try:
-        embedding = await agents.get_embedding_async(structured.get("transcript", ""))
+        embedding, model_used = await agents.get_embedding_async(structured.get("transcript", ""))
     except Exception:
-        embedding = []
+        embedding, model_used = [], "unknown"
 
     thought_data = {
         "id": thought_id,
@@ -156,14 +167,14 @@ async def create_thought(
         "longitude": longitude,
         "location_name": final_location_name,
         "embedding": embedding,
-        "embedding_model": "gemini-embedding-001",
+        "embedding_model": model_used,
         "raw_response": json.dumps(structured),
     }
 
     db.save_thought(thought_data)
 
-    # 4. Agent 2: CONNECTOR (autonomous non-blocking background task)
-    asyncio.create_task(_run_connector(thought_data))
+    # 4. Agent 2: CONNECTOR (autonomous retained background task)
+    run_background_task(_run_connector(thought_data))
 
     result = {
         k: v
@@ -213,7 +224,7 @@ async def reprocess_thought(thought_id: int):
         timestamp=thought.get("created_at", ""),
         location_context=thought.get("location_name", ""),
     )
-    embedding = await agents.get_embedding_async(structured.get("transcript", ""))
+    embedding, model_used = await agents.get_embedding_async(structured.get("transcript", ""))
 
     thought.update({
         "transcript": structured.get("transcript", ""),
@@ -226,11 +237,12 @@ async def reprocess_thought(thought_id: int):
         "urgency": structured.get("urgency", "low"),
         "implicit_questions": structured.get("implicit_questions", []),
         "embedding": embedding,
+        "embedding_model": model_used,
         "raw_response": json.dumps(structured),
     })
 
     db.save_thought(thought)
-    asyncio.create_task(_run_connector(thought))
+    run_background_task(_run_connector(thought))
     return {"status": "success", "thought": thought}
 
 
@@ -286,7 +298,7 @@ async def get_latest_connections():
 
 @app.get("/api/patterns")
 async def get_patterns():
-    """Run hierarchical pattern analysis across all thoughts."""
+    """Run hierarchical pattern analysis across thoughts."""
     thoughts = db.get_all_thoughts(status="completed")
     if len(thoughts) < 2:
         return {
@@ -372,13 +384,6 @@ async def get_neural_graph():
         else:
             return "theme_health", "#10b981"
 
-    def cosine(a, b):
-        if not a or not b or len(a) != len(b):
-            return 0.0
-        a, b = np.array(a, dtype=float), np.array(b, dtype=float)
-        norm = np.linalg.norm(a) * np.linalg.norm(b)
-        return float(np.dot(a, b) / (norm + 1e-8)) if norm > 0 else 0.0
-
     thought_nodes = []
     for t in all_thoughts:
         parent_theme, col = get_category_id(t.get("topics", []), t.get("transcript", ""))
@@ -386,7 +391,7 @@ async def get_neural_graph():
         if len(label) > 28:
             label = label[:26] + "..."
         
-        date_str = t.get("created_at", "")[:10]
+        date_str = (t.get("created_at") or "")[:10]
         loc_str = t.get("location_name") or "Bay Area"
 
         thought_nodes.append(t)
@@ -422,7 +427,7 @@ async def get_neural_graph():
     for i in range(len(thought_nodes)):
         for j in range(i + 1, len(thought_nodes)):
             t1, t2 = thought_nodes[i], thought_nodes[j]
-            sim = cosine(t1.get("embedding"), t2.get("embedding"))
+            sim = db.cosine(t1.get("embedding"), t2.get("embedding"))
             if sim > 0.60:
                 edges.append({
                     "from": f"thought_{t1['id']}",
@@ -447,22 +452,13 @@ async def search_thoughts(q: str):
         return []
 
     try:
-        query_emb = await agents.get_embedding_async(q)
+        query_emb, _ = await agents.get_embedding_async(q)
     except Exception:
         return []
 
-    def cosine(a, b):
-        if not a or not b or len(a) != len(b):
-            return 0.0
-        a, b = np.array(a, dtype=float), np.array(b, dtype=float)
-        norm = np.linalg.norm(a) * np.linalg.norm(b)
-        if norm == 0:
-            return 0.0
-        return float(np.dot(a, b) / (norm + 1e-8))
-
     scored = []
     for t in all_thoughts:
-        sim = cosine(query_emb, t.get("embedding", []))
+        sim = db.cosine(query_emb, t.get("embedding", []))
         t_out = {k: v for k, v in t.items() if k != "embedding"}
         t_out["relevance"] = round(sim, 4)
         scored.append((sim, t_out))
@@ -471,17 +467,24 @@ async def search_thoughts(q: str):
     return [t for _, t in scored[:10]]
 
 
-# ── Oracle: Context-Aware Chat ──────────────────────────────────────
+# ── Oracle: Context-Aware Chat with Server-Side Persistence ─────────
 
 
 class ChatRequest(BaseModel):
+    conversation_id: str = "default"
     message: str
     history: list[dict] = []
 
 
+@app.get("/api/conversations/{conv_id}/messages")
+async def get_messages(conv_id: str):
+    """Return persisted turn-by-turn chat history for a session."""
+    return db.get_conversation_messages(conv_id)
+
+
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
-    """Oracle agent: chat with RAG over thought history, durable themes, and connector insights."""
+    """Oracle agent: server-persisted chat with query expansion and pinned context."""
     all_thoughts = db.get_thoughts_with_embeddings()
 
     if not all_thoughts:
@@ -492,25 +495,60 @@ async def chat(req: ChatRequest):
             )
         }
 
-    # Retrieve most relevant thoughts via cosine similarity
-    try:
-        query_emb = await agents.get_embedding_async(req.message)
+    conv_id = req.conversation_id or "default"
+    conv = db.get_or_create_conversation(conv_id)
+    pinned_ids = set(conv.get("pinned_thought_ids") or [])
 
+    # 1. Query Expansion for follow-ups (e.g. "tell me more", "why is that?")
+    expanded_query = req.message
+    if req.history and len(req.message.split()) < 6:
+        # Use previous assistant message snippet to anchor follow-up retrieval
+        last_turn = req.history[-1].get("content", "")[:120]
+        expanded_query = f"{last_turn}\nUser query: {req.message}"
+
+    # 2. Retrieve relevant thoughts
+    try:
+        query_emb, _ = await agents.get_embedding_async(expanded_query)
         scored = [
-            (cosine(query_emb, t.get("embedding", [])), t) for t in all_thoughts
+            (db.cosine(query_emb, t.get("embedding", [])), t) for t in all_thoughts
         ]
         scored.sort(key=lambda x: x[0], reverse=True)
-        relevant = [t for _, t in scored[:8]]
+        newly_retrieved = [t for _, t in scored[:6]]
     except Exception:
-        relevant = all_thoughts[:8]
+        newly_retrieved = all_thoughts[:6]
 
-    response = await agents.oracle_chat(
+    # 3. Maintain Context Continuity: Combine previously pinned thoughts + newly retrieved
+    retrieved_dict = {t["id"]: t for t in all_thoughts}
+    pinned_thoughts = [retrieved_dict[tid] for tid in pinned_ids if tid in retrieved_dict]
+    
+    # Merge and update pinned set (max 8 pinned thoughts per conversation)
+    combined_thoughts = list({t["id"]: t for t in (pinned_thoughts + newly_retrieved)}.values())[:8]
+    db.update_conversation_pinned_thoughts(conv_id, [t["id"] for t in combined_thoughts])
+
+    # 4. Save User Message to SQLite
+    db.save_message(conv_id, "user", req.message)
+
+    # 5. Query-conditioned Connector Insights
+    conditioned_insights = None
+    if latest_connector_insights:
+        # Only inject if relevant to query or broad questions
+        conditioned_insights = latest_connector_insights
+
+    # 6. Generate Oracle response
+    response_text = await agents.oracle_chat(
         req.message,
-        relevant,
-        connector_data=latest_connector_insights,
+        combined_thoughts,
+        connector_data=conditioned_insights,
         chat_history=req.history,
     )
-    return {"response": response}
+
+    # 7. Save Assistant Message to SQLite
+    db.save_message(conv_id, "model", response_text)
+
+    return {
+        "conversation_id": conv_id,
+        "response": response_text
+    }
 
 
 # ── Agent Status ────────────────────────────────────────────────────
