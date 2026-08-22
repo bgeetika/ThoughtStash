@@ -273,6 +273,28 @@ class TestPydanticSchemasAndAgents(unittest.TestCase):
             self.assertEqual(saved_theme["description"], "Exploration of long-horizon AI agent state")
             self.assertIn(999, saved_theme["associated_thought_ids"])
 
+    def test_text_thought_persistence(self):
+        """Verify text-based thought creation and retrieval in database."""
+        thought_data = {
+            "created_at": "2026-08-22T17:30:00Z",
+            "audio_path": None,
+            "transcript": "Minimal and clean UI design test",
+            "summary": "Design test for minimal UI",
+            "topics": ["Design", "UI"],
+            "mood": "creative",
+            "location_name": "San Francisco, CA",
+            "latitude": 37.7749,
+            "longitude": -122.4194,
+            "embedding": [0.1] * 768,
+            "embedding_model": "test-model",
+            "raw_response": "{}"
+        }
+        t_id = db.save_thought(thought_data)
+        self.assertIsInstance(t_id, int)
+        retrieved = db.get_thought_by_id(t_id)
+        self.assertEqual(retrieved["summary"], "Design test for minimal UI")
+        self.assertEqual(retrieved["location_name"], "San Francisco, CA")
+
 
 if __name__ == "__main__":
     unittest.main()

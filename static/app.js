@@ -1033,6 +1033,17 @@ chatInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) sendChatMessage();
 });
 
+// Prompt Chips
+document.querySelectorAll('.prompt-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+        const text = chip.dataset.prompt;
+        if (text) {
+            chatInput.value = text;
+            sendChatMessage();
+        }
+    });
+});
+
 async function sendChatMessage() {
     const message = chatInput.value.trim();
     if (!message) return;
@@ -1080,7 +1091,77 @@ function appendChatBubble(role, text) {
     return div;
 }
 
-// ── 15. App Initialization ─────────────────────────────────────────
+// ── 15. Quick Text Capture Fallback ────────────────────────────────
+
+const textInput = document.getElementById('textThoughtInput');
+const textSubmit = document.getElementById('textThoughtSubmit');
+
+async function handleTextThoughtSubmit() {
+    if (!textInput) return;
+    const text = textInput.value.trim();
+    if (!text) return;
+
+    textInput.value = '';
+    textSubmit.disabled = true;
+    textSubmit.textContent = 'Saving...';
+
+    latestThought.style.display = 'none';
+    connectorInsights.style.display = 'none';
+    processing.style.display = 'flex';
+    setAgentState(scribePill, 'working', 'Structuring...');
+
+    try {
+        const payload = {
+            text: text,
+            latitude: currentGeo.latitude,
+            longitude: currentGeo.longitude,
+            location_name: currentGeo.locationName,
+            client_timestamp: new Date().toISOString()
+        };
+
+        const res = await fetch('/api/thoughts/text', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Capture failed');
+        }
+
+        const thought = await res.json();
+        setAgentState(scribePill, 'ready', 'Captured ✓');
+        showThoughtResult(thought);
+
+        setAgentState(connectorPill, 'working', 'Synthesizing...');
+        pollConnectorInsights(thought.id);
+
+        if (leafletMap) loadMapPoints();
+        if (graph3DRenderer) init3DGraph();
+
+    } catch (err) {
+        recordStatus.textContent = `Error: ${err.message}`;
+    } finally {
+        textSubmit.disabled = false;
+        textSubmit.textContent = 'Save Thought';
+    }
+}
+
+if (textSubmit) textSubmit.addEventListener('click', handleTextThoughtSubmit);
+if (textInput) textInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleTextThoughtSubmit();
+});
+
+// Escape key to close inspector
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const drawer = document.getElementById('thoughtInspectorDrawer');
+        if (drawer) drawer.style.display = 'none';
+    }
+});
+
+// ── 16. App Initialization ─────────────────────────────────────────
 
 initCosmicBackground();
 init3DAudioOrb();

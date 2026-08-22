@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ThoughtStash — Long-Horizon Voice Agent</title>
+    <title>ThoughtStash — Voice Thought Intelligence</title>
     
     <!-- Google Fonts: Editorial Serif + Modern Geometric Sans + Technical Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -29,20 +29,20 @@
         <header class="app-header">
             <div class="brand-container">
                 <div class="brand-logo-mark">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M12 2L14.5 8.5L21 11L14.5 13.5L12 20L9.5 13.5L3 11L9.5 8.5L12 2Z" fill="url(#brandGrad)" />
-                        <circle cx="12" cy="11" r="3" fill="#06070a" />
+                        <circle cx="12" cy="11" r="3" fill="#0a0b0e" />
                         <defs>
                             <linearGradient id="brandGrad" x1="3" y1="2" x2="21" y2="20" gradientUnits="userSpaceOnUse">
                                 <stop stop-color="#00f2fe"/>
-                                <stop offset="1" stop-color="#8a2be2"/>
+                                <stop offset="1" stop-color="#6366f1"/>
                             </linearGradient>
                         </defs>
                     </svg>
                 </div>
                 <div class="brand-text">
                     <h1>ThoughtStash</h1>
-                    <span class="brand-tagline">Long-Horizon Voice Intelligence</span>
+                    <span class="brand-tagline">Long-Horizon Voice Agent</span>
                 </div>
             </div>
 
@@ -54,9 +54,9 @@
                     <span class="agent-state">Ready</span>
                 </div>
                 <div class="agent-pill" id="connectorStatus">
-                    <span class="agent-led status-idle"></span>
+                    <span class="agent-led status-ready"></span>
                     <span class="agent-name">Connector</span>
-                    <span class="agent-state">Monitoring</span>
+                    <span class="agent-state">Active</span>
                 </div>
                 <div class="agent-pill" id="oracleStatus">
                     <span class="agent-led status-ready"></span>
@@ -97,7 +97,7 @@
         <!-- Main Workspace -->
         <main class="workspace">
             
-            <!-- 🎙️ 1. CAPTURE TAB (Hero with 3D Audio Orb) -->
+            <!-- 🎙️ 1. CAPTURE TAB -->
             <section id="capture" class="tab-view active">
                 <div class="hero-capture-stage">
                     <div class="editorial-headline">
@@ -120,7 +120,7 @@
                             </button>
                             
                             <div class="recording-telemetry">
-                                <div id="recordStatus" class="telemetry-status">Tap Orb to begin walk session</div>
+                                <div id="recordStatus" class="telemetry-status">Tap Orb to begin recording</div>
                                 <div id="timer" class="telemetry-timer" style="display:none">00:00</div>
                                 <div id="locationBadge" class="telemetry-badge">
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -130,12 +130,18 @@
                         </div>
                     </div>
 
+                    <!-- Quick Text Input Fallback -->
+                    <div class="text-capture-bar">
+                        <input type="text" id="textThoughtInput" placeholder="Or type a thought to capture..." autocomplete="off">
+                        <button id="textThoughtSubmit" class="text-submit-btn">Save Thought</button>
+                    </div>
+
                     <!-- Processing State Indicator -->
                     <div id="processing" class="processing-glass-card" style="display:none">
                         <div class="cosmic-spinner"></div>
                         <div class="processing-copy">
-                            <h4>Gemini 3.7 Agent Swarm Active</h4>
-                            <p>Scribing acoustic stream, generating 3072-dim embeddings & evaluating long-horizon connections...</p>
+                            <h4>Processing Thought...</h4>
+                            <p>Scribing transcript, computing vector embeddings & linking past patterns in sub-2s...</p>
                         </div>
                     </div>
 
@@ -175,7 +181,7 @@
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00f2fe" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
                             </div>
                             <div>
-                                <h4>Autonomous Connector Synthesis</h4>
+                                <h4>Connector Synthesis</h4>
                                 <span class="panel-sub">Linked across multi-week episodic memory</span>
                             </div>
                         </div>
@@ -204,12 +210,12 @@
                 </div>
             </section>
 
-            <!-- 🕸️ 3. 3D NEURAL SPACE TAB (Three.js WebGL Graph) -->
+            <!-- 🕸️ 3. 3D NEURAL SPACE TAB (Three.js 3D Galaxy) -->
             <section id="graphTab" class="tab-view">
                 <div class="view-header">
                     <div>
                         <h2>3D Neural Knowledge Space</h2>
-                        <p class="subtitle">Living multi-week constellation: Durable Themes, Semantic Links & Evolving Perspectives.</p>
+                        <p class="subtitle">Living multi-week constellation: Themes, Semantic Links & Evolving Perspectives.</p>
                     </div>
                     <div class="graph-toolbar">
                         <button id="resetGraphBtn" class="glass-action-btn">
@@ -222,7 +228,7 @@
                 <div class="graph-viewport-glass">
                     <div id="neural3DGraph" class="force-graph-canvas"></div>
                     <div class="graph-instructions-badge">
-                        <span>Left Click: Rotate · Right Click: Pan · Scroll: Zoom · Click Node: Inspect</span>
+                        <span>Left Click: Rotate · Scroll: Zoom · Click Node: Inspect Memory</span>
                     </div>
                 </div>
             </section>
@@ -236,8 +242,8 @@
                     </div>
                     <div class="glass-search-box">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                        <input type="text" id="searchInput" placeholder="Search ideas, locations, or topics...">
-                        <button id="searchBtn" class="search-submit-btn">Filter</button>
+                        <input type="text" id="searchInput" placeholder="Search ideas, places, or topics...">
+                        <button id="searchBtn" class="search-submit-btn">Search</button>
                     </div>
                 </div>
 
@@ -251,16 +257,16 @@
                 <div class="view-header">
                     <div>
                         <h2>Long-Horizon Pattern Synthesis</h2>
-                        <p class="subtitle">Hierarchical multi-agent extraction of recurring themes, mood curves, and cognitive shifts.</p>
+                        <p class="subtitle">Multi-agent extraction of recurring themes, emotional trajectories, and behavioral habits.</p>
                     </div>
                     <button id="analyzeBtn" class="glass-primary-btn">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
-                        <span>Run Full Synthesis</span>
+                        <span>Analyze My Thinking</span>
                     </button>
                 </div>
 
                 <div id="patternsResult" class="patterns-dashboard-glass">
-                    <div class="empty-state-glass">Click "Run Full Synthesis" to extract high-order patterns across your multi-week walk history.</div>
+                    <div class="empty-state-glass">Click "Analyze My Thinking" to extract high-order patterns across your multi-week walk history.</div>
                 </div>
             </section>
 
@@ -270,7 +276,7 @@
                     <div class="chat-header-bar">
                         <div class="chat-title-info">
                             <h3>Oracle Thinking Partner</h3>
-                            <span class="chat-status-sub">Grounded across 17+ episodic memories & durable themes</span>
+                            <span class="chat-status-sub">Grounded across 19+ episodic memories & durable themes</span>
                         </div>
                     </div>
 
@@ -280,14 +286,19 @@
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00f2fe" stroke-width="2"><path d="M12 2L14.5 8.5L21 11L14.5 13.5L12 20L9.5 13.5L3 11L9.5 8.5L12 2Z"/></svg>
                             </div>
                             <div class="bubble-content">
-                                <p>I am your ThoughtStash Oracle. I hold the complete chronological map of your thoughts from your walks across the Bay Area. Ask me about your ideas, decisions, or how your thinking on a subject has evolved.</p>
+                                <p>I am your ThoughtStash Oracle. I hold the complete chronological map of your thoughts from your walks across the Bay Area. Ask me anything, or try one of these prompts below:</p>
+                                <div class="chat-prompt-chips">
+                                    <button class="prompt-chip" data-prompt="What were my ideas on AI agent memory and architecture?">AI Agent Memory</button>
+                                    <button class="prompt-chip" data-prompt="What did I plan for my parents' 40th anniversary?">Parents' Anniversary</button>
+                                    <button class="prompt-chip" data-prompt="What are my reflections on birthday parties and family events?">Birthday Reflections</button>
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     <div class="chat-composer-bar">
-                        <input type="text" id="chatInput" placeholder="What were my ideas about AI agents and memory on my walks?" autocomplete="off">
-                        <button id="chatSendBtn" class="chat-send-action">
+                        <input type="text" id="chatInput" placeholder="Ask about your past thoughts, locations, or connections..." autocomplete="off">
+                        <button id="chatSendBtn" class="chat-send-action" aria-label="Send Message">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                         </button>
                     </div>

@@ -184,6 +184,73 @@ async def create_thought(
     return result
 
 
+class TextThoughtRequest(BaseModel):
+    text: str
+    latitude: float | None = None
+    longitude: float | None = None
+    location_name: str | None = None
+    client_timestamp: str | None = None
+
+
+@app.post("/api/thoughts/text")
+async def create_text_thought(req: TextThoughtRequest):
+    """Capture a thought directly from text input with Scribe structuring and Connector linking."""
+    if not req.text.strip():
+        raise HTTPException(400, "Thought text cannot be empty")
+
+    created_at = db.normalize_timestamp(req.client_timestamp or datetime.now(timezone.utc).isoformat())
+    loc_ctx = req.location_name or (f"{req.latitude:.4f}, {req.longitude:.4f}" if req.latitude is not None else "Not provided")
+
+    prompt = f"""Process this captured thought:
+Text: "{req.text}"
+Timestamp: {created_at}
+Location Context: {loc_ctx}
+"""
+    from google.genai import types
+    config = types.GenerateContentConfig(
+        response_mime_type="application/json",
+        response_schema=agents.ScribeOutputSchema,
+    )
+    resp = await agents.generate_with_fallback([prompt], config=config)
+    structured = json.loads(resp.text)
+
+    try:
+        embedding, model_used = await agents.get_embedding_async(structured.get("transcript", req.text))
+    except Exception:
+        embedding, model_used = [], "unknown"
+
+    final_location_name = req.location_name or structured.get("location_name") or (
+        f"{req.latitude:.4f}, {req.longitude:.4f}" if req.latitude is not None else "Bay Area"
+    )
+
+    thought_data = {
+        "created_at": created_at,
+        "audio_path": None,
+        "transcript": structured.get("transcript", req.text),
+        "summary": structured.get("summary", req.text[:60]),
+        "topics": structured.get("topics", []),
+        "entities": structured.get("entities", []),
+        "mood": structured.get("mood", "reflective"),
+        "key_insights": structured.get("key_insights", []),
+        "thought_type": structured.get("thought_type", "idea"),
+        "urgency": structured.get("urgency", "low"),
+        "implicit_questions": structured.get("implicit_questions", []),
+        "latitude": req.latitude,
+        "longitude": req.longitude,
+        "location_name": final_location_name,
+        "embedding": embedding,
+        "embedding_model": model_used,
+        "raw_response": json.dumps(structured),
+    }
+
+    thought_id = db.save_thought(thought_data)
+    thought_data["id"] = thought_id
+
+    run_background_task(_run_connector(thought_data))
+
+    return {k: v for k, v in thought_data.items() if k not in ("embedding", "raw_response")}
+
+
 async def _run_connector(new_thought: dict):
     """Connector agent: runs autonomously with dynamic retrieval across infinite horizons."""
     global latest_connector_insights
