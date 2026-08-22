@@ -31,9 +31,15 @@ def init_db():
             mood TEXT,
             key_insights TEXT,
             embedding TEXT,
-            raw_response TEXT
+            raw_response TEXT,
+            connections TEXT
         )
     """)
+    # Migrate: add connections column if missing (existing DBs)
+    try:
+        conn.execute("ALTER TABLE thoughts ADD COLUMN connections TEXT")
+    except sqlite3.OperationalError:
+        pass  # column already exists
     conn.commit()
     conn.close()
 
@@ -119,4 +125,27 @@ def get_thought_by_id(thought_id: int) -> dict | None:
         t.pop("embedding", None)
         t.pop("raw_response", None)
         return t
+    return None
+
+
+def update_thought_connections(thought_id: int, connections_json: str):
+    """Store Connector agent's analysis for a thought."""
+    conn = get_db()
+    conn.execute(
+        "UPDATE thoughts SET connections = ? WHERE id = ?",
+        (connections_json, thought_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_thought_connections(thought_id: int) -> dict | None:
+    """Get Connector agent's analysis for a thought."""
+    conn = get_db()
+    row = conn.execute(
+        "SELECT connections FROM thoughts WHERE id = ?", (thought_id,)
+    ).fetchone()
+    conn.close()
+    if row and row["connections"]:
+        return json.loads(row["connections"])
     return None

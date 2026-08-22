@@ -98,11 +98,28 @@ function updateTimer() {
     timerEl.textContent = `${m}:${s}`;
 }
 
-// ── Upload & Process ───────────────────────────────────────────────
+// ── Agent Status Helpers ───────────────────────────────────────────
+
+const scribeChip = document.getElementById('scribeStatus');
+const connectorChip = document.getElementById('connectorStatus');
+const oracleChip = document.getElementById('oracleStatus');
+const connectorInsights = document.getElementById('connectorInsights');
+const connectorContent = document.getElementById('connectorContent');
+
+function setAgentState(chip, state, label) {
+    chip.className = 'agent-chip ' + state;
+    chip.querySelector('span').textContent = label;
+}
+
+// ── Upload & Process (Agentic Pipeline) ────────────────────────────
 
 async function uploadThought(blob) {
     latestThought.style.display = 'none';
+    connectorInsights.style.display = 'none';
     processing.style.display = 'block';
+
+    // Scribe agent working
+    setAgentState(scribeChip, 'working', 'Processing...');
 
     const formData = new FormData();
     formData.append('audio', blob, 'thought.webm');
@@ -114,14 +131,69 @@ async function uploadThought(blob) {
             throw new Error(err.detail || 'Upload failed');
         }
         const thought = await res.json();
+
+        // Scribe done
+        setAgentState(scribeChip, 'active', 'Done ✓');
         showThoughtResult(thought);
+
+        // Connector agent is now working autonomously in the background
+        setAgentState(connectorChip, 'working', 'Analyzing...');
+
+        // Poll for connector results (it runs async on the server)
+        pollConnectorInsights(thought.id);
+
     } catch (err) {
         recordStatus.textContent = `❌ Error: ${err.message}`;
+        setAgentState(scribeChip, 'active', 'Error');
         console.error('Upload error:', err);
     } finally {
         processing.style.display = 'none';
         recordStatus.textContent = 'Tap to start recording';
         timerEl.style.display = 'none';
+    }
+}
+
+async function pollConnectorInsights(thoughtId) {
+    // Poll every 2s for up to 30s
+    for (let i = 0; i < 15; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        try {
+            const res = await fetch(`/api/thoughts/${thoughtId}/connections`);
+            const data = await res.json();
+            if (data.status === 'pending') continue;
+
+            // Connector found something!
+            setAgentState(connectorChip, 'active', 'Done ✓');
+            showConnectorInsights(data);
+            return;
+        } catch { /* keep polling */ }
+    }
+    setAgentState(connectorChip, 'active', 'Done');
+}
+
+function showConnectorInsights(data) {
+    let html = '';
+
+    if (data.proactive_insight) {
+        html += `<div class="proactive-insight">💡 ${data.proactive_insight}</div>`;
+    }
+
+    if (data.connections?.length) {
+        html += '<h4 style="margin-top:12px; font-size:13px; color:var(--text-muted)">Connections to past thoughts:</h4>';
+        data.connections.forEach(c => {
+            const icon = c.connection_type === 'contradicts' ? '⚡' :
+                         c.connection_type === 'evolves' ? '📈' : '🔗';
+            html += `<div class="connection-item">${icon} <strong>${c.connection_type}</strong>: ${c.explanation}</div>`;
+        });
+    }
+
+    if (data.thinking_evolution) {
+        html += `<p style="margin-top:10px; color:var(--text-muted)">📈 ${data.thinking_evolution}</p>`;
+    }
+
+    if (html) {
+        connectorContent.innerHTML = html;
+        connectorInsights.style.display = 'block';
     }
 }
 

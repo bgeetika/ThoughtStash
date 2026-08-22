@@ -18,6 +18,13 @@
         <p class="tagline">Capture thoughts on walks. Let AI find the patterns.</p>
     </header>
 
+    <!-- Agent Status Bar -->
+    <div id="agentStatus" class="agent-bar">
+        <div class="agent-chip" id="scribeStatus">🖊️ Scribe: <span>Ready</span></div>
+        <div class="agent-chip" id="connectorStatus">🔗 Connector: <span>Idle</span></div>
+        <div class="agent-chip" id="oracleStatus">🔮 Oracle: <span>Ready</span></div>
+    </div>
+
     <!-- Navigation Tabs -->
     <nav class="tabs">
         <button class="tab active" data-tab="capture">🎙️ Capture</button>
@@ -70,6 +77,12 @@
                     <ul id="resultInsights"></ul>
                 </div>
             </div>
+        </div>
+
+        <!-- Connector Agent Insights (appears autonomously) -->
+        <div id="connectorInsights" class="connector-panel" style="display:none">
+            <h3>🔗 Connector Agent Found Something</h3>
+            <div id="connectorContent" class="connector-content"></div>
         </div>
     </section>
 
