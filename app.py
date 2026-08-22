@@ -506,7 +506,7 @@ async def chat(req: ChatRequest):
         last_turn = req.history[-1].get("content", "")[:120]
         expanded_query = f"{last_turn}\nUser query: {req.message}"
 
-    # 2. Retrieve relevant thoughts
+    # 2. Retrieve relevant thoughts dynamically for the current prompt
     try:
         query_emb, _ = await agents.get_embedding_async(expanded_query)
         scored = [
@@ -517,12 +517,17 @@ async def chat(req: ChatRequest):
     except Exception:
         newly_retrieved = all_thoughts[:6]
 
-    # 3. Maintain Context Continuity: Combine previously pinned thoughts + newly retrieved
+    # 3. Dynamic Context Window (Prioritize new query matches + carry forward 2-3 prior pinned for continuity)
     retrieved_dict = {t["id"]: t for t in all_thoughts}
     pinned_thoughts = [retrieved_dict[tid] for tid in pinned_ids if tid in retrieved_dict]
-    
-    # Merge and update pinned set (max 8 pinned thoughts per conversation)
-    combined_thoughts = list({t["id"]: t for t in (pinned_thoughts + newly_retrieved)}.values())[:8]
+
+    # Newly retrieved thoughts take priority so context NEVER freezes on old topics
+    combined_dict = {t["id"]: t for t in newly_retrieved}
+    for pt in pinned_thoughts:
+        if pt["id"] not in combined_dict and len(combined_dict) < 8:
+            combined_dict[pt["id"]] = pt
+
+    combined_thoughts = list(combined_dict.values())
     db.update_conversation_pinned_thoughts(conv_id, [t["id"] for t in combined_thoughts])
 
     # 4. Save User Message to SQLite
@@ -531,7 +536,6 @@ async def chat(req: ChatRequest):
     # 5. Query-conditioned Connector Insights
     conditioned_insights = None
     if latest_connector_insights:
-        # Only inject if relevant to query or broad questions
         conditioned_insights = latest_connector_insights
 
     # 6. Generate Oracle response
