@@ -423,21 +423,70 @@ class ChatOutputSchema(BaseModel):
     )
 
 
+def build_thought_context_layer(
+    relevant_thoughts: list[dict],
+    durable_themes: list[dict] | None = None,
+) -> dict:
+    """Builds a structured personal context layer from the user's thought stash.
+    
+    Returns a dictionary with:
+      - has_context: bool
+      - context_text: formatted string representing matching notes, locations & themes
+      - thought_count: int
+      - locations: list of unique locations
+    """
+    if not relevant_thoughts:
+        return {
+            "has_context": False,
+            "context_text": "[THOUGHTSTASH CONTEXT LAYER: No directly related notes found in stash]",
+            "thought_count": 0,
+            "locations": [],
+        }
+
+    lines = []
+    locations = set()
+    for t in relevant_thoughts:
+        loc = t.get("location_name") or "Unspecified location"
+        if loc and loc != "Unspecified location":
+            locations.add(loc)
+        date_str = t.get("created_at", "?")[:10] if t.get("created_at") else "Unknown date"
+        summary = t.get("summary") or t.get("transcript") or ""
+        topics = t.get("topics") or []
+        topic_str = f" [Topics: {', '.join(topics)}]" if topics else ""
+        lines.append(f"• [{date_str} @ {loc}]: {summary}{topic_str}")
+
+    theme_lines = []
+    if durable_themes:
+        for th in durable_themes[:4]:
+            desc = th.get("summary") or th.get("description") or ""
+            theme_lines.append(f"• {th.get('name', '')}: {desc}")
+
+    formatted = "[THOUGHTSTASH CONTEXT LAYER]\n"
+    formatted += f"Relevant Recorded Notes ({len(lines)}):\n"
+    formatted += "\n".join(lines)
+
+    if theme_lines:
+        formatted += "\n\nActive Durable Themes & Long-Term Patterns:\n" + "\n".join(theme_lines)
+
+    formatted += "\n[END CONTEXT LAYER]"
+
+    return {
+        "has_context": True,
+        "context_text": formatted,
+        "thought_count": len(lines),
+        "locations": list(locations),
+    }
+
+
 async def oracle_chat(
     query: str,
     relevant_thoughts: list[dict],
     connector_data: dict | None = None,
     chat_history: list[dict] | None = None,
 ) -> dict:
-    """Assistant chat: returns concise, grounded answers and intelligent suggestions."""
-    context = ""
-    for t in relevant_thoughts:
-        loc = t.get("location_name") or ""
-        date_str = t.get("created_at", "?")[:10]
-        context += f"- [{date_str} @ {loc}]: {t.get('summary', '')} (Details: {t.get('transcript', '')})\n"
-
+    """Assistant chat: Attaches a personal ThoughtStash Context Layer to the user input."""
     durable_themes = db.get_all_themes()
-    durable_themes_str = ", ".join(th["name"] for th in durable_themes[:4]) if durable_themes else "None"
+    context_layer = build_thought_context_layer(relevant_thoughts, durable_themes)
 
     history_str = ""
     if chat_history:
@@ -445,31 +494,35 @@ async def oracle_chat(
             role = "User" if msg["role"] == "user" else "Assistant"
             history_str += f"{role}: {msg['content']}\n"
 
-    prompt = f"""You are ThoughtStash Assistant — an intelligent thinking partner that has access to the user's recorded thoughts, notes, and locations.
+    # Context layer appended directly to the user input
+    augmented_user_input = f"""{query}
 
-INTELLIGENCE & ACCURACY GUIDELINES:
-1. NOTE RECALL:
-   - When the user asks about what they recorded in the past (e.g. "what did I say about X?", "what did I plan?"): Ground your answer strictly in their notes without inventing past recordings.
-   - If they ask to recall a specific memory with no notes at all, politely state that no notes were recorded for that topic yet.
+{context_layer['context_text']}"""
 
-2. RECOMMENDATIONS, SUGGESTIONS & BRAINSTORMING:
-   - When the user asks for suggestions, recommendations, ideas, next steps, or advice (e.g. "suggest some restaurants near that location", "what should I pack?", "how should I expand this idea?"): Connect the request to the context from their notes (e.g. Carmel, Monterey, anniversary, gentle walks, hydration, etc.) and actively provide real, top-quality, practical recommendations!
-   - Name real places, options, or concrete ideas that best fit their situation.
+    prompt = f"""You are ThoughtStash Assistant — an intelligent thinking partner that works over the user's personal thought stash.
+
+CONTEXT LAYER ARCHITECTURE:
+Every user request comes with an attached [THOUGHTSTASH CONTEXT LAYER] drawn from their personal voice notes, ideas, and durable themes.
+
+OPERATING RULES:
+1. When the user asks to RECALL past notes (e.g. "what did I say about X?", "what did I plan?"):
+   - Ground your answer strictly in the notes provided in the Context Layer. Do NOT invent past recordings or dates.
+   - If the Context Layer has no notes on that topic, state that no notes were recorded for that topic yet.
+
+2. When the user asks for RECOMMENDATIONS, SUGGESTIONS, OR NEXT STEPS (e.g. "suggest some restaurants near that location", "give me ideas", "how should I prepare?"):
+   - Use the background from the Context Layer (e.g. destinations, anniversary, physical accessibility, hydration, walking habits) to tailor real-world, high-quality, practical recommendations.
+   - Provide concrete names, places, or actionable steps.
 
 FORMAT RULES:
-- Keep the summary to 1-2 clear, direct sentences.
+- Keep the summary to 1-2 direct, clear sentences.
 - Provide 2-3 concise, high-value bullet points.
 - Do NOT output raw markdown headers (###), extra asterisks, or messy formatting.
 
-Context from recorded notes:
-{context or "No notes recorded yet."}
-
-Active Themes: {durable_themes_str}
-
-Recent Conversation:
+Recent Conversation History:
 {history_str or "New conversation"}
 
-User Request: "{query}"
+User Request with Context Layer:
+{augmented_user_input}
 """
     config = types.GenerateContentConfig(
         response_mime_type="application/json",
@@ -482,10 +535,15 @@ User Request: "{query}"
     )
 
     try:
-        return json.loads(response.text)
+        data = json.loads(response.text)
+        data["context_layer_applied"] = context_layer["has_context"]
+        data["matched_thought_count"] = context_layer["thought_count"]
+        return data
     except Exception:
         return {
             "summary": response.text,
             "key_points": [],
             "suggested_action": None,
+            "context_layer_applied": context_layer["has_context"],
+            "matched_thought_count": context_layer["thought_count"],
         }

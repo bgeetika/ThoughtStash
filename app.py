@@ -679,7 +679,9 @@ async def chat(req: ChatRequest):
         "summary": summary,
         "key_points": key_points,
         "suggested_action": suggested_action,
-        "response": history_text
+        "response": history_text,
+        "context_layer_applied": chat_result.get("context_layer_applied", False),
+        "matched_thought_count": chat_result.get("matched_thought_count", 0),
     }
 
 

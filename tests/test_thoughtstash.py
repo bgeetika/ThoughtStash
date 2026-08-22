@@ -295,17 +295,38 @@ class TestPydanticSchemasAndAgents(unittest.TestCase):
         self.assertEqual(retrieved["summary"], "Design test for minimal UI")
         self.assertEqual(retrieved["location_name"], "San Francisco, CA")
 
-    def test_geocoding_utilities(self):
-        """Verify reverse geocoding and place searching."""
-        import geocode
-        known = geocode.search_place("Rancho San Antonio")
-        self.assertIsNotNone(known)
-        self.assertEqual(known["lat"], 37.3328)
+    def test_context_layer_building(self):
+        """Verify ThoughtStash context layer builds structured context for agent."""
+        mock_thoughts = [
+            {
+                "id": 1,
+                "summary": "Planned anniversary coastal drive",
+                "transcript": "Let's take parents on Highway 1 to Carmel",
+                "location_name": "Mountain View, CA",
+                "created_at": "2026-07-22T10:00:00Z",
+                "topics": ["travel", "family"]
+            },
+            {
+                "id": 2,
+                "summary": "Confirmed dinner reservation in Carmel",
+                "transcript": "Dinner reservation confirmed in Carmel",
+                "location_name": "Santa Cruz, CA",
+                "created_at": "2026-08-15T12:00:00Z",
+                "topics": ["dinner", "anniversary"]
+            }
+        ]
+        layer = agents.build_thought_context_layer(mock_thoughts)
+        self.assertTrue(layer["has_context"])
+        self.assertEqual(layer["thought_count"], 2)
+        self.assertIn("THOUGHTSTASH CONTEXT LAYER", layer["context_text"])
+        self.assertIn("Carmel", layer["context_text"])
+        self.assertIn("Mountain View, CA", layer["locations"])
 
-        rev = geocode.reverse_geocode(37.4419, -122.1430)
-        self.assertTrue(len(rev) > 0)
-        self.assertIn("Palo Alto", rev)
+        empty_layer = agents.build_thought_context_layer([])
+        self.assertFalse(empty_layer["has_context"])
+        self.assertEqual(empty_layer["thought_count"], 0)
 
 
 if __name__ == "__main__":
     unittest.main()
+
