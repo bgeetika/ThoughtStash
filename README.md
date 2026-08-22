@@ -74,7 +74,7 @@ Open your browser at **`http://localhost:8877`** (or `http://<hostname>:8877` if
 | `GEMINI_API_KEY` | Google AI Studio API key | Yes* | - |
 | `GOOGLE_CLOUD_PROJECT` | GCP project ID (for Vertex AI) | Yes* | - |
 | `GOOGLE_CLOUD_LOCATION` | Vertex AI region | No | `us-central1` |
-| `GEMINI_MODEL` | Gemini model for agents | No | `gemini-2.0-flash` |
+| `GEMINI_MODEL` | Gemini model for agents | No | `gemini-3.7-flash` |
 | `PORT` | Server port | No | `8877` |
 
 *\*Provide either `GEMINI_API_KEY` or `GOOGLE_CLOUD_PROJECT`.*

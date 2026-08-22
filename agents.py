@@ -24,8 +24,8 @@ def _get_client():
 
 
 client = _get_client()
-DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
-FALLBACK_MODELS = [DEFAULT_MODEL, "gemini-3.5-flash", "gemini-3.7-flash"]
+DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.7-flash")
+FALLBACK_MODELS = [DEFAULT_MODEL, "gemini-3.6-flash", "gemini-3.5-flash"]
 EMBEDDING_MODELS = ["gemini-embedding-001", "gemini-embedding-2"]
 
 
