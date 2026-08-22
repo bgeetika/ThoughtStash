@@ -573,7 +573,7 @@ FORMAT & VOICE:
 - summary: 1-2 direct sentences stating the core answer. NEVER say "I can help you by...", "Combining your creative ideas with your past reflections...", "Based on your notes...", or "Sure!". Jump straight into the substantive answer.
 - key_points: 2-4 concise bullets with specific details. At least one bullet should surface a proactive insight from the context layer if one exists.
 - suggested_action: optional concrete next step.
-- No markdown headers, no asterisks, no hashtags.
+- No markdown headers, no asterisks, no hashtags, no emojis.
 
 Recent Conversation:
 {history_str or "New conversation"}

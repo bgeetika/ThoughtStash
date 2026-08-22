@@ -1472,22 +1472,18 @@ if (newChatBtn) {
                     "<div class=\"bubble-summary\">Hi! Ask me anything about your past notes, walks, or ideas. What are you thinking through today?</div>" +
                     "<div class=\"prompt-grid-chips\">" +
                         "<button class=\"prompt-card\" type=\"button\" data-prompt=\"What have I noted about hydration and health?\">" +
-                            "<span class=\"prompt-icon\">💧</span>" +
                             "<span class=\"prompt-title\">Hydration habits</span>" +
                             "<span class=\"prompt-desc\">Past reflections on drinking water & wellness</span>" +
                         "</button>" +
                         "<button class=\"prompt-card\" type=\"button\" data-prompt=\"What were my ideas about AI agents and memory?\">" +
-                            "<span class=\"prompt-icon\">🧠</span>" +
                             "<span class=\"prompt-title\">AI agent architectures</span>" +
                             "<span class=\"prompt-desc\">Long-horizon memory & edge intelligence</span>" +
                         "</button>" +
                         "<button class=\"prompt-card\" type=\"button\" data-prompt=\"What did I plan for my parents' anniversary?\">" +
-                            "<span class=\"prompt-icon\">👨‍👩‍👧</span>" +
                             "<span class=\"prompt-title\">Parents' anniversary</span>" +
                             "<span class=\"prompt-desc\">Itinerary, Carmel reservations & gift ideas</span>" +
                         "</button>" +
                         "<button class=\"prompt-card\" type=\"button\" data-prompt=\"What notes did I record during my recent walks?\">" +
-                            "<span class=\"prompt-icon\">🌲</span>" +
                             "<span class=\"prompt-title\">Recent walk notes</span>" +
                             "<span class=\"prompt-desc\">Thoughts from Stanford Dish, Shoreline & Cupertino</span>" +
                         "</button>" +
@@ -1557,7 +1553,6 @@ function renderAssistantResponse(body, data) {
     if (data.suggested_action) {
         html += 
             "<div class=\"suggested-action-box\">" +
-                "<span class=\"action-icon\">💡</span>" +
                 "<span><strong>Takeaway:</strong> " + escapeHtml(data.suggested_action) + "</span>" +
             "</div>";
     }
@@ -1568,7 +1563,7 @@ function renderAssistantResponse(body, data) {
         const searchBadge = data.web_search_used ? " + Google Search" : "";
         html += 
             "<div class=\"provenance-chip\">" +
-                "<span>✨ Grounded in " + noteLabel + searchBadge + "</span>" +
+                "<span>Grounded in " + noteLabel + searchBadge + "</span>" +
             "</div>";
     }
 
