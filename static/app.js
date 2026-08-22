@@ -551,7 +551,18 @@ async function sendChatMessage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message, history: chatHistory }),
         });
-        const data = await res.json();
+        
+        const rawText = await res.text();
+        let data;
+        try {
+            data = JSON.parse(rawText);
+        } catch {
+            throw new Error(rawText || `Server is starting up (HTTP ${res.status}). Please try again in a few seconds.`);
+        }
+
+        if (!res.ok) {
+            throw new Error(data.detail || data.message || `Server error (${res.status})`);
+        }
 
         typingId.querySelector('.msg-content p').textContent = data.response;
 
