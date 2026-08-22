@@ -1,98 +1,111 @@
-# 🧠 ThoughtStash — Voice Thought Capture
+# 🧠 ThoughtStash — Voice Thought Capture with 3-Agent Swarm
 
-> **Think aloud on walks. Let AI remember, connect, and resurface your thoughts.**
+> **Think aloud on walks. Let an autonomous AI agent swarm remember, connect, and resurface your thoughts.**
 
-ThoughtStash is a voice-first thought capture tool that lets you speak freely during walks/commutes. AI transcribes, structures, finds patterns across your thoughts over time, and feeds them back as persistent context for future model interactions.
+ThoughtStash is a voice-first thought capture tool designed for walks, commutes, and hands-free moments. Powered by a **3-agent collaborative swarm**, it transcribes your voice, structures thoughts with deep metadata, autonomously identifies emerging themes and contradictions across time, and injects your thought history directly into interactive AI sessions.
 
-## ✨ Features
+---
 
-- 🎙️ **Voice Capture** — Record thoughts via browser microphone
-- 📝 **AI Structuring** — Gemini transcribes and extracts topics, entities, mood, key insights
-- 🔍 **Semantic Search** — Find related thoughts via embeddings
-- 🔗 **Pattern Recognition** — Discover recurring themes across weeks of thinking
-- 💬 **Context-Aware Chat** — Chat with an AI that knows what you've been thinking about (RAG)
-
-## 🏗️ Architecture
+## 🤖 Meet the Agent Swarm
 
 ```
-Voice Recording (Browser)
-    │
-    ▼ audio blob (webm)
-FastAPI Backend (:8877)
-    │
-    ├─► Gemini API ──► Transcribe + Extract (topics, entities, mood, summary)
-    │
-    ├─► SQLite ──► Store thought + embedding
-    │
-    ├─► Pattern Engine ──► Gemini analyzes all thoughts for recurring themes
-    │
-    └─► Context Chat ──► RAG: retrieve relevant thoughts → inject into Gemini prompt
+🎙️ User Voice
+      │
+      ▼
+┌──────────────────┐
+│  🖊️ SCRIBE AGENT │ ──► Transcribes audio, removes fillers, structures thought
+└─────────┬────────┘     (topics, entities, mood, key insights, urgency, questions)
+          │
+          ├───────────────────────────────┐
+          ▼                               ▼ (async background task)
+┌──────────────────┐            ┌─────────────────────┐
+│  💾 SQLITE STORE │ ◄───────── │ 🔗 CONNECTOR AGENT  │ (AUTONOMOUS)
+└─────────┬────────┘            └─────────────────────┘
+          │                      - Compares against historical thoughts
+          │                      - Finds cross-session connections & contradictions
+          ▼                      - Surfaces proactive insights to UI
+┌──────────────────┐
+│  🔮 ORACLE AGENT │ ──► Context-aware RAG chat partner referencing your thought history
+└──────────────────┘
 ```
+
+| Agent | Responsibility | Execution Model |
+|:---|:---|:---|
+| 🖊️ **Scribe** | Accurate transcription, filler word removal, deep structuring (thought type, mood, urgency, implicit questions) | Event-driven (on audio upload) |
+| 🔗 **Connector** | Cross-thought pattern recognition, contradiction detection, trend evolution tracking, proactive insights | **Autonomous** (runs automatically in the background after every thought) |
+| 🔮 **Oracle** | Conversational partner equipped with RAG over your thought archive and Connector insights | On-demand (interactive chat) |
+
+---
+
+## ✨ Core Features
+
+- 🎙️ **Frictionless Voice Capture** — Hands-free audio recording with live waveform and visual timer
+- 📝 **Intelligent Structuring** — Converts rambles into crisp summaries, categorized tags, detected sentiment, and actionable insights
+- 🔗 **Autonomous Connections** — The Connector agent alerts you in real-time when a new thought connects to or contradicts something you said days or weeks ago
+- 🔍 **Semantic Search** — Vector similarity retrieval using `text-embedding-004`
+- 📊 **Thought Pattern Analysis** — Comprehensive reporting across recurring themes, mood trajectories, and thinking evolution
+- 💬 **Context-Aware Thinking Partner** — Ask "What have I been thinking about lately?" and the Oracle synthesizes your thoughts with exact timestamps and context
+
+---
 
 ## 🚀 Quick Start
 
 ```bash
-# 1. Clone
-git clone https://github.com/<your-username>/thoughtstash.git
-cd thoughtstash
+# 1. Clone the repository
+git clone https://github.com/bgeetika/ThoughtStash.git
+cd ThoughtStash
 
-# 2. Set your Gemini API key
-export GEMINI_API_KEY="your-key-here"
+# 2. Set your Gemini API key (or use Vertex AI)
+export GEMINI_API_KEY="your-gemini-api-key"
 
-# 3. Run
+# 3. Launch the server
 chmod +x start.sh
 ./start.sh
 ```
 
-The app will be available at `http://localhost:8877`
+Open your browser at **`http://localhost:8877`** (or `http://<hostname>:8877` if hosting remotely).
+
+---
 
 ## 🔑 Configuration
 
-| Env Variable | Description | Required |
-|:---|:---|:---|
-| `GEMINI_API_KEY` | Google AI Studio API key | Yes (or use Vertex AI) |
-| `GOOGLE_CLOUD_PROJECT` | GCP project for Vertex AI | Alternative to API key |
-| `GOOGLE_CLOUD_LOCATION` | Vertex AI region (default: `us-central1`) | No |
-| `GEMINI_MODEL` | Model name (default: `gemini-2.0-flash`) | No |
-| `PORT` | Server port (default: `8877`) | No |
+| Env Variable | Description | Required | Default |
+|:---|:---|:---|:---|
+| `GEMINI_API_KEY` | Google AI Studio API key | Yes* | - |
+| `GOOGLE_CLOUD_PROJECT` | GCP project ID (for Vertex AI) | Yes* | - |
+| `GOOGLE_CLOUD_LOCATION` | Vertex AI region | No | `us-central1` |
+| `GEMINI_MODEL` | Gemini model for agents | No | `gemini-2.0-flash` |
+| `PORT` | Server port | No | `8877` |
+
+*\*Provide either `GEMINI_API_KEY` or `GOOGLE_CLOUD_PROJECT`.*
+
+---
 
 ## 📁 Project Structure
 
 ```
-thoughtstash/
-├── app.py              # FastAPI backend (all routes)
-├── db.py               # SQLite helpers
-├── gemini_client.py    # Gemini API wrapper (transcription, patterns, chat)
-├── requirements.txt    # Python dependencies
-├── start.sh            # One-command launcher
+ThoughtStash/
+├── app.py              # FastAPI server & async agent orchestration
+├── agents.py           # Multi-agent definitions (Scribe, Connector, Oracle)
+├── db.py               # SQLite persistence layer & connection store
+├── requirements.txt    # Python dependencies (google-genai, google-adk, fastapi, etc.)
+├── start.sh            # Automated startup script (venv + install + run)
 ├── static/
-│   ├── index.html      # Single-page app
-│   ├── style.css       # Dark-mode UI
-│   └── app.js          # Frontend logic (voice recording, API calls)
-└── data/               # Auto-created
-    ├── mindtrail.db    # SQLite database
-    └── audio/          # Saved audio files
+│   ├── index.html      # Modern SPA frontend with live Agent Status bar
+│   ├── style.css       # Clean dark-mode UI with animated indicators
+│   └── app.js          # Audio recording, real-time agent polling, chat RAG UI
+└── data/               # Created at runtime (git-ignored)
+    ├── mindtrail.db    # SQLite database with vector embeddings
+    └── audio/          # Stored raw audio recordings
 ```
 
-## 🧪 Tech Stack
-
-- **Backend:** Python + FastAPI
-- **Frontend:** Vanilla HTML/CSS/JS
-- **Database:** SQLite
-- **AI:** Google Gemini API (`google-genai`)
-- **Embeddings:** `text-embedding-004` for semantic search
-
-## 🔮 Multi-Agent Roadmap (v2)
-
-| Agent | Role |
-|:---|:---|
-| 🖊️ **Scribe** | Transcribe + clean audio |
-| 🔗 **Connector** | Find patterns + connections across thoughts |
-| 🔮 **Oracle** | Context-aware chat with RAG |
+---
 
 ## 💡 The Vision
 
-Most AI memory systems remember what *happened to you* (emails, meetings, docs). ThoughtStash remembers what you *thought about* — the walk epiphanies, the shower ideas, the evolving intuitions. It's the **write-side of long-horizon personal agents**.
+Most AI memory solutions focus on what *happened to you* (emails, meeting transcripts, browser history). **ThoughtStash** captures what you *thought about* — the walking epiphanies, shower thoughts, and evolving intuitions. It provides the missing **write-side memory layer for long-horizon personal AI agents**.
+
+---
 
 ## 📄 License
 
