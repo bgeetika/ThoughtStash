@@ -1,4 +1,4 @@
-"""ThoughtStash Agents — 3-agent swarm using Google ADK.
+"""ThoughtStash Agents — 3-agent swarm using Google ADK & Gemini.
 
 Scribe:    Transcribes audio → structured thought with time & geo-location context
 Connector: Autonomously finds patterns + connections across time & locations
@@ -24,8 +24,30 @@ def _get_client():
 
 
 client = _get_client()
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
-EMBEDDING_MODEL = "text-embedding-004"
+DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
+FALLBACK_MODELS = [DEFAULT_MODEL, "gemini-2.5-flash", "gemini-flash-latest"]
+EMBEDDING_MODELS = ["gemini-embedding-001", "gemini-embedding-2"]
+
+
+def _generate_with_fallback(contents, config=None):
+    """Generate content trying primary and fallback models."""
+    last_err = None
+    for model_name in FALLBACK_MODELS:
+        try:
+            if config:
+                return client.models.generate_content(
+                    model=model_name,
+                    contents=contents,
+                    config=config,
+                )
+            return client.models.generate_content(
+                model=model_name,
+                contents=contents,
+            )
+        except Exception as e:
+            last_err = e
+            continue
+    raise last_err or RuntimeError("Failed to generate content with any model")
 
 
 def _clean_json(text: str) -> str:
@@ -80,12 +102,11 @@ async def scribe_process(
         timestamp=timestamp or "Just now",
         location_context=location_context or "Not provided",
     )
-    response = client.models.generate_content(
-        model=MODEL,
+    response = _generate_with_fallback(
         contents=[
             prompt,
             types.Part.from_bytes(data=audio_bytes, mime_type=mime_type),
-        ],
+        ]
     )
     return json.loads(_clean_json(response.text))
 
@@ -123,10 +144,13 @@ Respond in this exact JSON format:
 Return ONLY valid JSON. If there are no past thoughts, return minimal results."""
 
 
-async def connector_analyze(new_thought: dict, past_thoughts: list[dict]) -> dict:
+async def connector_analyze(
+    new_thought: dict, past_thoughts: list[dict]
+) -> dict:
     """Connector agent: autonomously find patterns after each new thought."""
     loc_str = new_thought.get("location_name") or (
-        f"Lat: {new_thought.get('latitude')}, Lon: {new_thought.get('longitude')}"
+        f"Lat: {new_thought.get('latitude')}, Lon:"
+        f" {new_thought.get('longitude')}"
         if new_thought.get("latitude") is not None
         else "Unknown location"
     )
@@ -155,9 +179,8 @@ async def connector_analyze(new_thought: dict, past_thoughts: list[dict]) -> dic
             context += f"Mood: {t.get('mood', '')}\n"
             context += f"Transcript: {t.get('transcript', '')}\n"
 
-    response = client.models.generate_content(
-        model=MODEL,
-        contents=[CONNECTOR_PROMPT + "\n\n" + context],
+    response = _generate_with_fallback(
+        contents=[CONNECTOR_PROMPT + "\n\n" + context]
     )
     try:
         return json.loads(_clean_json(response.text))
@@ -216,7 +239,7 @@ async def connector_full_analysis(thoughts: list[dict]) -> dict:
         thoughts_text += f"Transcript: {t.get('transcript', 'N/A')}\n"
 
     prompt = PATTERN_REPORT_PROMPT.format(thoughts_text=thoughts_text)
-    response = client.models.generate_content(model=MODEL, contents=prompt)
+    response = _generate_with_fallback(contents=[prompt])
     return json.loads(_clean_json(response.text))
 
 
@@ -282,8 +305,7 @@ async def oracle_chat(
         types.Content(role="user", parts=[types.Part.from_text(text=query)])
     )
 
-    response = client.models.generate_content(
-        model=MODEL,
+    response = _generate_with_fallback(
         contents=contents,
         config=types.GenerateContentConfig(system_instruction=system),
     )
@@ -295,8 +317,15 @@ async def oracle_chat(
 
 def get_embedding(text: str) -> list[float]:
     """Get embedding vector for semantic search."""
-    result = client.models.embed_content(
-        model=EMBEDDING_MODEL,
-        contents=text,
-    )
-    return list(result.embeddings[0].values)
+    last_err = None
+    for emb_model in EMBEDDING_MODELS:
+        try:
+            result = client.models.embed_content(
+                model=emb_model,
+                contents=text,
+            )
+            return list(result.embeddings[0].values)
+        except Exception as e:
+            last_err = e
+            continue
+    raise last_err or RuntimeError("Failed to compute embedding")
