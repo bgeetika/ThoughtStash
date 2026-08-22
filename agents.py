@@ -411,15 +411,15 @@ Thought Stream:
 
 class ChatOutputSchema(BaseModel):
     summary: str = Field(
-        description="A factual, direct 1-2 sentence answer strictly grounded in the user's recorded notes (max 35 words). If notes do not contain the answer, state clearly that there are no recorded notes on this yet."
+        description="A direct, helpful 1-2 sentence response addressing the user's query (max 40 words)."
     )
     key_points: list[str] = Field(
         default_factory=list,
-        description="1 to 3 factual bullet points (max 20 words each) citing specific dates and locations directly from the notes. Never make up details."
+        description="2 to 4 concise bullet points. If the user is recalling past notes, cite exact dates/locations from their notes. If the user asks for suggestions, recommendations, advice, or ideas relating to their notes, provide real, high-quality, practical recommendations."
     )
     suggested_action: str | None = Field(
         default=None,
-        description="1 brief takeaway or suggestion ONLY if directly relevant to what the user noted."
+        description="Optional helpful takeaway, tip, or next step for the user."
     )
 
 
@@ -429,7 +429,7 @@ async def oracle_chat(
     connector_data: dict | None = None,
     chat_history: list[dict] | None = None,
 ) -> dict:
-    """Assistant chat: returns concise, strictly grounded summary and bullet points."""
+    """Assistant chat: returns concise, grounded answers and intelligent suggestions."""
     context = ""
     for t in relevant_thoughts:
         loc = t.get("location_name") or ""
@@ -445,14 +445,21 @@ async def oracle_chat(
             role = "User" if msg["role"] == "user" else "Assistant"
             history_str += f"{role}: {msg['content']}\n"
 
-    prompt = f"""You are ThoughtStash Assistant. Answer the user's question accurately and concisely based ONLY on their recorded voice notes.
+    prompt = f"""You are ThoughtStash Assistant — an intelligent thinking partner that has access to the user's recorded thoughts, notes, and locations.
 
-STRICT ACCURACY RULES:
-- Ground all statements directly in the provided notes. Never hallucinate or invent memories, dates, locations, or topics.
-- If the user asks something not found in the notes context, answer truthfully: "You haven't recorded any notes about this yet."
+INTELLIGENCE & ACCURACY GUIDELINES:
+1. NOTE RECALL:
+   - When the user asks about what they recorded in the past (e.g. "what did I say about X?", "what did I plan?"): Ground your answer strictly in their notes without inventing past recordings.
+   - If they ask to recall a specific memory with no notes at all, politely state that no notes were recorded for that topic yet.
+
+2. RECOMMENDATIONS, SUGGESTIONS & BRAINSTORMING:
+   - When the user asks for suggestions, recommendations, ideas, next steps, or advice (e.g. "suggest some restaurants near that location", "what should I pack?", "how should I expand this idea?"): Connect the request to the context from their notes (e.g. Carmel, Monterey, anniversary, gentle walks, hydration, etc.) and actively provide real, top-quality, practical recommendations!
+   - Name real places, options, or concrete ideas that best fit their situation.
+
+FORMAT RULES:
 - Keep the summary to 1-2 clear, direct sentences.
-- Provide 1-3 concise bullet points with exact dates and locations if relevant.
-- Do NOT output any markdown headers (###), asterisks, or messy symbols.
+- Provide 2-3 concise, high-value bullet points.
+- Do NOT output raw markdown headers (###), extra asterisks, or messy formatting.
 
 Context from recorded notes:
 {context or "No notes recorded yet."}
@@ -462,7 +469,7 @@ Active Themes: {durable_themes_str}
 Recent Conversation:
 {history_str or "New conversation"}
 
-User Question: "{query}"
+User Request: "{query}"
 """
     config = types.GenerateContentConfig(
         response_mime_type="application/json",

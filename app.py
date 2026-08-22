@@ -612,12 +612,12 @@ async def chat(req: ChatRequest):
     conv = db.get_or_create_conversation(conv_id)
     pinned_ids = set(conv.get("pinned_thought_ids") or [])
 
-    # 1. Query Expansion for follow-ups (e.g. "tell me more", "why is that?")
+    # 1. Query Expansion for follow-ups (e.g. "suggest some restaurants near that location", "why is that?")
     expanded_query = req.message
-    if req.history and len(req.message.split()) < 6:
-        # Use previous assistant message snippet to anchor follow-up retrieval
-        last_turn = req.history[-1].get("content", "")[:120]
-        expanded_query = f"{last_turn}\nUser query: {req.message}"
+    if req.history:
+        # Use previous conversation turn to anchor follow-up retrieval and preserve geographic/topical context
+        last_turn = req.history[-1].get("content", "")[:200]
+        expanded_query = f"{req.message}\nContext: {last_turn}"
 
     # 2. Retrieve relevant thoughts dynamically for the current prompt
     try:
