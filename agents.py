@@ -406,25 +406,23 @@ Thought Stream:
     return json.loads(response.text)
 
 
-# ── Agent 3: ORACLE (Context Chat with Hierarchical Memory) ─────────
+# ── Agent 3: ASSISTANT (Concise Chat & Clickable Follow-ups) ───────
 
-ORACLE_SYSTEM = """You are the personal voice notebook assistant in ThoughtStash.
-You help the user search, recall, and connect voice notes they recorded during walks and daily routines, with timestamps and locations.
 
-GUIDELINES:
-- Speak in a natural, clear, conversational tone. Avoid robotic jargon or AI buzzwords.
-- Ground your answers accurately in the user's notes (including date and location when helpful).
-- Highlight connections between notes when relevant.
-- Keep responses clear, structured, and easy to scan.
-
-NOTES CONTEXT:
-{context}
-
-THEMES:
-{durable_themes}
-
-CONNECTED OBSERVATIONS:
-{connector_insights}"""
+class ChatOutputSchema(BaseModel):
+    summary: str = Field(description="A concise 1-sentence direct answer (max 25 words)")
+    key_points: list[str] = Field(
+        default_factory=list,
+        description="2-3 short bullet points (max 20 words each) citing specific dates/locations from notes"
+    )
+    suggested_action: str | None = Field(
+        default=None,
+        description="1 brief practical suggestion or takeaway based on past notes"
+    )
+    follow_up_questions: list[str] = Field(
+        default_factory=list,
+        description="2-3 short, natural follow-up questions the user can click to ask next"
+    )
 
 
 async def oracle_chat(
@@ -432,49 +430,60 @@ async def oracle_chat(
     relevant_thoughts: list[dict],
     connector_data: dict | None = None,
     chat_history: list[dict] | None = None,
-) -> str:
-    """Oracle agent: chat with RAG over thought history, durable themes, and connector patterns."""
+) -> dict:
+    """Assistant chat: returns structured concise summary, bullet points, and clickable follow-up questions."""
     context = ""
     for t in relevant_thoughts:
-        loc = t.get("location_name") or (
-            f"📍 {t.get('latitude'):.4f}, {t.get('longitude'):.4f}"
-            if t.get("latitude") is not None
-            else ""
-        )
-        context += f"📅 **{t.get('created_at', '?')}** {loc} [{t.get('thought_type', 'thought')}]\n"
-        context += f"Summary: {t.get('summary', '')}\n"
-        context += f"Topics: {', '.join(t.get('topics', []))}\n"
-        context += f"Mood: {t.get('mood', '')}\n"
-        context += f"Transcript: {t.get('transcript', '')}\n\n"
+        loc = t.get("location_name") or ""
+        date_str = t.get("created_at", "?")[:10]
+        context += f"- [{date_str} @ {loc}]: {t.get('summary', '')} (Details: {t.get('transcript', '')})\n"
 
     durable_themes = db.get_all_themes()
-    durable_themes_str = json.dumps(durable_themes[:8], indent=2) if durable_themes else "None yet."
+    durable_themes_str = ", ".join(th["name"] for th in durable_themes[:4]) if durable_themes else "None"
 
-    connector_insights = "None available yet."
-    if connector_data:
-        connector_insights = json.dumps(connector_data, indent=2)
-
-    system = ORACLE_SYSTEM.format(
-        context=context,
-        durable_themes=durable_themes_str,
-        connector_insights=connector_insights,
-    )
-
-    contents = []
+    history_str = ""
     if chat_history:
-        for msg in chat_history:
-            contents.append(
-                types.Content(
-                    role=msg["role"],
-                    parts=[types.Part.from_text(text=msg["content"])],
-                )
-            )
-    contents.append(
-        types.Content(role="user", parts=[types.Part.from_text(text=query)])
+        for msg in chat_history[-4:]:
+            role = "User" if msg["role"] == "user" else "Assistant"
+            history_str += f"{role}: {msg['content']}\n"
+
+    prompt = f"""You are ThoughtStash Assistant. Answer the user's question concisely based on their recorded voice notes.
+
+RULES:
+- Keep the summary to 1 clear, direct sentence.
+- Give 2-3 short bullet points referencing specific dates and places from the notes.
+- Do NOT output any markdown headers (###), asterisks, or messy symbols.
+- Generate 2-3 short, highly relevant follow-up questions the user can click on to learn more.
+
+Context from recorded notes:
+{context or "No notes recorded yet."}
+
+Active Themes: {durable_themes_str}
+
+Recent Conversation:
+{history_str or "New conversation"}
+
+User Question: "{query}"
+"""
+    config = types.GenerateContentConfig(
+        response_mime_type="application/json",
+        response_schema=ChatOutputSchema,
     )
 
     response = await generate_with_fallback(
-        contents=contents,
-        config=types.GenerateContentConfig(system_instruction=system),
+        contents=[prompt],
+        config=config,
     )
-    return response.text
+
+    try:
+        return json.loads(response.text)
+    except Exception:
+        return {
+            "summary": response.text,
+            "key_points": [],
+            "suggested_action": None,
+            "follow_up_questions": [
+                "What did I record today?",
+                "Show my recent notes on walks"
+            ]
+        }

@@ -105,9 +105,42 @@
                             <div class="record-meta">
                                 <div id="recordStatus" class="record-status-text">Tap to record a voice note</div>
                                 <div id="timer" class="record-timer-text" style="display:none">00:00</div>
-                                <div id="locationBadge" class="record-location-pill">
+                                <div id="locationBadge" class="record-location-pill" title="Click to change or detect location">
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/><circle cx="12" cy="10" r="3"/></svg>
-                                    <span>Palo Alto, CA</span>
+                                    <span id="locationBadgeText">Palo Alto, CA</span>
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Location Selector Modal -->
+                    <div id="locationModal" class="location-modal-backdrop" style="display:none">
+                        <div class="location-modal-card">
+                            <div class="location-modal-header">
+                                <h4>Set Walk Location</h4>
+                                <button id="closeLocationModalBtn" class="close-modal-btn" aria-label="Close">&times;</button>
+                            </div>
+                            <div class="location-modal-body">
+                                <button id="detectGpsBtn" class="btn btn-secondary btn-full">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="22" x2="18" y1="12" y2="12"/><line x1="6" x2="2" y1="12" y2="12"/><line x1="12" x2="12" y1="6" y2="2"/><line x1="12" x2="12" y1="22" y2="18"/></svg>
+                                    <span>Detect GPS Location</span>
+                                </button>
+                                <div class="location-divider"><span>or search a place</span></div>
+                                <div class="location-search-row">
+                                    <input type="text" id="customLocationInput" placeholder="Type city, trail, or neighborhood...">
+                                    <button id="applyLocationBtn" class="btn btn-primary">Set</button>
+                                </div>
+                                <div class="quick-places-group">
+                                    <span class="quick-places-label">Popular Walk Spots:</span>
+                                    <div class="quick-places-chips">
+                                        <button class="place-chip" type="button" data-name="Rancho San Antonio, Cupertino" data-lat="37.3328" data-lon="-122.0864">Rancho San Antonio</button>
+                                        <button class="place-chip" type="button" data-name="Stanford Dish Trail, Palo Alto" data-lat="37.4172" data-lon="-122.1736">Stanford Dish</button>
+                                        <button class="place-chip" type="button" data-name="Shoreline Park, Mountain View" data-lat="37.4302" data-lon="-122.0824">Shoreline Park</button>
+                                        <button class="place-chip" type="button" data-name="Castro Street, Mountain View" data-lat="37.3942" data-lon="-122.0795">Castro St (Mtn View)</button>
+                                        <button class="place-chip" type="button" data-name="Mission Dolores Park, SF" data-lat="37.7596" data-lon="-122.4269">Mission Dolores (SF)</button>
+                                        <button class="place-chip" type="button" data-name="Burlingame Avenue, Burlingame" data-lat="37.5779" data-lon="-122.3481">Burlingame Ave</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -262,11 +295,14 @@
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
                             </div>
                             <div class="bubble-body">
-                                <p>Hi! I can help you search and recall ideas from your walks. Here are a few questions you can try:</p>
-                                <div class="prompt-chips-row">
-                                    <button class="prompt-chip" data-prompt="What were my ideas about AI agents and memory?">AI agent ideas</button>
-                                    <button class="prompt-chip" data-prompt="What did I plan for my parents' 40th anniversary?">Parents' anniversary</button>
-                                    <button class="prompt-chip" data-prompt="What have I noted about hydration and walking habits?">Walking & health</button>
+                                <div class="bubble-summary">Hi! Ask me anything about your past notes, walks, or ideas.</div>
+                                <div class="bubble-followups">
+                                    <span class="followup-label">Try asking:</span>
+                                    <div class="followup-chips">
+                                        <button class="followup-chip" type="button" data-question="Why do I feel so tired all the time?">Why do I feel tired?</button>
+                                        <button class="followup-chip" type="button" data-question="What were my ideas about AI agents and memory?">AI agent ideas</button>
+                                        <button class="followup-chip" type="button" data-question="What did I plan for my parents' 40th anniversary?">Parents' anniversary</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>

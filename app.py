@@ -20,6 +20,7 @@ from pydantic import BaseModel
 
 import agents
 import db
+import geocode
 
 load_dotenv(override=True)
 
@@ -135,14 +136,19 @@ async def create_thought(
             500, detail=f"Scribe agent failed: {e}. Audio saved as pending id={thought_id}"
         )
 
-    # Location fallback
+    # Location resolution & reverse geocoding
+    final_lat = latitude
+    final_lon = longitude
     final_location_name = location_name or structured.get("location_name")
-    if (
-        not final_location_name
-        and latitude is not None
-        and longitude is not None
-    ):
-        final_location_name = f"{latitude:.4f}, {longitude:.4f}"
+
+    if final_lat is not None and final_lon is not None and (not final_location_name or "Unknown" in final_location_name):
+        final_location_name = geocode.reverse_geocode(final_lat, final_lon)
+    elif final_location_name and (final_lat is None or final_lon is None):
+        resolved = geocode.search_place(final_location_name)
+        if resolved:
+            final_lat = resolved["lat"]
+            final_lon = resolved["lon"]
+            final_location_name = resolved["name"]
 
     # 3. Vector Embedding with True Model Provenance
     try:
@@ -163,9 +169,9 @@ async def create_thought(
         "thought_type": structured.get("thought_type", "reflection"),
         "urgency": structured.get("urgency", "low"),
         "implicit_questions": structured.get("implicit_questions", []),
-        "latitude": latitude,
-        "longitude": longitude,
-        "location_name": final_location_name,
+        "latitude": final_lat,
+        "longitude": final_lon,
+        "location_name": final_location_name or "Bay Area",
         "embedding": embedding,
         "embedding_model": model_used,
         "raw_response": json.dumps(structured),
@@ -219,9 +225,19 @@ Location Context: {loc_ctx}
     except Exception:
         embedding, model_used = [], "unknown"
 
-    final_location_name = req.location_name or structured.get("location_name") or (
-        f"{req.latitude:.4f}, {req.longitude:.4f}" if req.latitude is not None else "Bay Area"
-    )
+    # Location resolution & reverse geocoding
+    final_lat = req.latitude
+    final_lon = req.longitude
+    final_location_name = req.location_name or structured.get("location_name")
+
+    if final_lat is not None and final_lon is not None and (not final_location_name or "Unknown" in final_location_name):
+        final_location_name = geocode.reverse_geocode(final_lat, final_lon)
+    elif final_location_name and (final_lat is None or final_lon is None):
+        resolved = geocode.search_place(final_location_name)
+        if resolved:
+            final_lat = resolved["lat"]
+            final_lon = resolved["lon"]
+            final_location_name = resolved["name"]
 
     thought_data = {
         "created_at": created_at,
@@ -235,9 +251,9 @@ Location Context: {loc_ctx}
         "thought_type": structured.get("thought_type", "idea"),
         "urgency": structured.get("urgency", "low"),
         "implicit_questions": structured.get("implicit_questions", []),
-        "latitude": req.latitude,
-        "longitude": req.longitude,
-        "location_name": final_location_name,
+        "latitude": final_lat,
+        "longitude": final_lon,
+        "location_name": final_location_name or "Bay Area",
         "embedding": embedding,
         "embedding_model": model_used,
         "raw_response": json.dumps(structured),
@@ -378,6 +394,25 @@ async def get_patterns():
         raise HTTPException(
             500, detail=f"Connector pattern analysis failed: {e}"
         )
+
+
+# ── Geolocation & Place Resolution Endpoints ────────────────────────
+
+
+@app.get("/api/geo/reverse")
+async def api_reverse_geo(lat: float, lon: float):
+    """Reverse geocode coordinates to clean street/neighborhood and city."""
+    loc_name = geocode.reverse_geocode(lat, lon)
+    return {"location_name": loc_name, "latitude": lat, "longitude": lon}
+
+
+@app.get("/api/geo/search")
+async def api_search_geo(q: str):
+    """Search a place name and return { name, lat, lon }."""
+    res = geocode.search_place(q)
+    if res:
+        return res
+    return {"name": q, "lat": 37.4419, "lon": -122.1430}
 
 
 # ── Map & Neural Graph Endpoints ────────────────────────────────────
@@ -616,20 +651,37 @@ async def chat(req: ChatRequest):
     if latest_connector_insights:
         conditioned_insights = latest_connector_insights
 
-    # 6. Generate Oracle response
-    response_text = await agents.oracle_chat(
+    # 6. Generate Assistant response
+    chat_result = await agents.oracle_chat(
         req.message,
         combined_thoughts,
         connector_data=conditioned_insights,
         chat_history=req.history,
     )
 
+    summary = chat_result.get("summary", "")
+    key_points = chat_result.get("key_points", [])
+    suggested_action = chat_result.get("suggested_action")
+    follow_up_questions = chat_result.get("follow_up_questions", [])
+
+    # Format a clean plaintext representation for message history
+    history_lines = [summary]
+    for kp in key_points:
+        history_lines.append(f"• {kp}")
+    if suggested_action:
+        history_lines.append(f"Takeaway: {suggested_action}")
+    history_text = "\n".join(history_lines)
+
     # 7. Save Assistant Message to SQLite
-    db.save_message(conv_id, "model", response_text)
+    db.save_message(conv_id, "model", history_text)
 
     return {
         "conversation_id": conv_id,
-        "response": response_text
+        "summary": summary,
+        "key_points": key_points,
+        "suggested_action": suggested_action,
+        "follow_up_questions": follow_up_questions,
+        "response": history_text
     }
 
 

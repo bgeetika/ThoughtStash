@@ -8,7 +8,7 @@ let mediaRecorder = null;
 let audioChunks = [];
 let recordTimer = null;
 let seconds = 0;
-let currentGeo = { latitude: null, longitude: null, locationName: "Palo Alto, CA" };
+let currentGeo = { latitude: 37.4419, longitude: -122.1430, locationName: "Palo Alto, CA", isManual: false };
 let chatHistory = [];
 let leafletMap = null;
 let mapMarkers = [];
@@ -61,25 +61,163 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     });
 });
 
-// ── 2. Geolocation ─────────────────────────────────────────────────
+// ── 2. Geolocation & Reverse Geocoding ──────────────────────────────
 
 function initGeolocation() {
+    updateLocationBadge();
+
+    // Setup Location Modal Listeners
+    const locationBadgeEl = document.getElementById('locationBadge');
+    const locationModalEl = document.getElementById('locationModal');
+    const closeLocationModalBtnEl = document.getElementById('closeLocationModalBtn');
+    const detectGpsBtnEl = document.getElementById('detectGpsBtn');
+    const customLocationInputEl = document.getElementById('customLocationInput');
+    const applyLocationBtnEl = document.getElementById('applyLocationBtn');
+
+    if (locationBadgeEl && locationModalEl) {
+        locationBadgeEl.addEventListener('click', () => {
+            locationModalEl.style.display = 'flex';
+        });
+    }
+
+    if (closeLocationModalBtnEl && locationModalEl) {
+        closeLocationModalBtnEl.addEventListener('click', () => {
+            locationModalEl.style.display = 'none';
+        });
+    }
+
+    if (locationModalEl) {
+        locationModalEl.addEventListener('click', (e) => {
+            if (e.target === locationModalEl) locationModalEl.style.display = 'none';
+        });
+    }
+
+    if (detectGpsBtnEl) {
+        detectGpsBtnEl.addEventListener('click', () => {
+            if (!("geolocation" in navigator)) {
+                alert("Geolocation is not supported by your browser.");
+                return;
+            }
+            detectGpsBtnEl.disabled = true;
+            const origText = detectGpsBtnEl.querySelector('span').textContent;
+            detectGpsBtnEl.querySelector('span').textContent = "Acquiring GPS...";
+
+            navigator.geolocation.getCurrentPosition(
+                async (pos) => {
+                    currentGeo.latitude = pos.coords.latitude;
+                    currentGeo.longitude = pos.coords.longitude;
+                    currentGeo.isManual = false;
+                    await resolveCoordinatesName(pos.coords.latitude, pos.coords.longitude);
+                    detectGpsBtnEl.disabled = false;
+                    detectGpsBtnEl.querySelector('span').textContent = origText;
+                    if (locationModalEl) locationModalEl.style.display = 'none';
+                },
+                (err) => {
+                    detectGpsBtnEl.disabled = false;
+                    detectGpsBtnEl.querySelector('span').textContent = origText;
+                    alert(`GPS unavailable (${err.message}). On http:// connections, browsers require manual selection or localhost. Please pick a preset spot or type your location!`);
+                },
+                { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+            );
+        });
+    }
+
+    document.querySelectorAll('.place-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const name = chip.dataset.name;
+            const lat = parseFloat(chip.dataset.lat);
+            const lon = parseFloat(chip.dataset.lon);
+            if (name && !isNaN(lat) && !isNaN(lon)) {
+                currentGeo.locationName = name;
+                currentGeo.latitude = lat;
+                currentGeo.longitude = lon;
+                currentGeo.isManual = true;
+                updateLocationBadge();
+                if (locationModalEl) locationModalEl.style.display = 'none';
+            }
+        });
+    });
+
+    async function applyCustomLocation() {
+        if (!customLocationInputEl) return;
+        const query = customLocationInputEl.value.trim();
+        if (!query) return;
+
+        if (applyLocationBtnEl) {
+            applyLocationBtnEl.disabled = true;
+            applyLocationBtnEl.textContent = '...';
+        }
+
+        try {
+            const res = await fetch(`/api/geo/search?q=${encodeURIComponent(query)}`);
+            if (res.ok) {
+                const data = await res.json();
+                currentGeo.locationName = data.name || query;
+                currentGeo.latitude = data.lat;
+                currentGeo.longitude = data.lon;
+                currentGeo.isManual = true;
+                updateLocationBadge();
+                if (locationModalEl) locationModalEl.style.display = 'none';
+            }
+        } catch (e) {
+            console.error("Location search error:", e);
+        } finally {
+            if (applyLocationBtnEl) {
+                applyLocationBtnEl.disabled = false;
+                applyLocationBtnEl.textContent = 'Set';
+            }
+        }
+    }
+
+    if (applyLocationBtnEl) {
+        applyLocationBtnEl.addEventListener('click', applyCustomLocation);
+    }
+    if (customLocationInputEl) {
+        customLocationInputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') applyCustomLocation();
+        });
+    }
+
+    // Initial GPS attempt
     if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                currentGeo.latitude = pos.coords.latitude;
-                currentGeo.longitude = pos.coords.longitude;
-                if (locationBadge) {
-                    locationBadge.querySelector('span').textContent = `${pos.coords.latitude.toFixed(3)}° N, ${pos.coords.longitude.toFixed(3)}° W`;
+            async (pos) => {
+                if (!currentGeo.isManual) {
+                    currentGeo.latitude = pos.coords.latitude;
+                    currentGeo.longitude = pos.coords.longitude;
+                    await resolveCoordinatesName(pos.coords.latitude, pos.coords.longitude);
                 }
             },
             () => {
-                // Fallback coordinates
-                currentGeo.latitude = 37.4419;
-                currentGeo.longitude = -122.1430;
-                currentGeo.locationName = "Palo Alto, CA";
-            }
+                // If browser denies, keep preset Palo Alto or resolve
+                if (!currentGeo.isManual && currentGeo.latitude && currentGeo.longitude) {
+                    resolveCoordinatesName(currentGeo.latitude, currentGeo.longitude);
+                }
+            },
+            { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
         );
+    }
+}
+
+async function resolveCoordinatesName(lat, lon) {
+    try {
+        const res = await fetch(`/api/geo/reverse?lat=${lat}&lon=${lon}`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.location_name) {
+                currentGeo.locationName = data.location_name;
+            }
+        }
+    } catch (e) {
+        console.warn("Reverse geocode error:", e);
+    }
+    updateLocationBadge();
+}
+
+function updateLocationBadge() {
+    const textEl = document.getElementById('locationBadgeText');
+    if (textEl) {
+        textEl.textContent = currentGeo.locationName || 'Set Location';
     }
 }
 
@@ -867,18 +1005,17 @@ chatInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) sendChatMessage();
 });
 
-document.querySelectorAll('.prompt-chip').forEach(chip => {
+document.querySelectorAll('.prompt-chip, .followup-chip').forEach(chip => {
     chip.addEventListener('click', () => {
-        const text = chip.dataset.prompt;
+        const text = chip.dataset.question || chip.dataset.prompt;
         if (text) {
-            chatInput.value = text;
-            sendChatMessage();
+            sendChatMessage(text);
         }
     });
 });
 
-async function sendChatMessage() {
-    const message = chatInput.value.trim();
+async function sendChatMessage(customQuery) {
+    const message = (typeof customQuery === 'string' ? customQuery : chatInput.value).trim();
     if (!message) return;
 
     appendChatBubble('user', message);
@@ -895,17 +1032,66 @@ async function sendChatMessage() {
         });
         const data = await res.json();
 
-        typingEl.querySelector('.bubble-body p').textContent = data.response;
+        renderAssistantResponse(data, typingEl);
 
         chatHistory.push({ role: 'user', content: message });
-        chatHistory.push({ role: 'model', content: data.response });
+        chatHistory.push({ role: 'model', content: data.summary || data.response || '' });
         if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
     } catch (err) {
-        typingEl.querySelector('.bubble-body p').textContent = `Error: ${err.message}`;
+        typingEl.querySelector('.bubble-body').innerHTML = `<p style="color:var(--color-coral)">Error: ${escapeHtml(err.message)}</p>`;
     } finally {
         chatSendBtn.disabled = false;
         chatInput.focus();
     }
+}
+
+function renderAssistantResponse(data, bubbleEl) {
+    const body = bubbleEl.querySelector('.bubble-body');
+    let html = '';
+
+    if (data.summary) {
+        html += `<div class="bubble-summary">${escapeHtml(data.summary)}</div>`;
+    }
+
+    if (data.key_points && data.key_points.length > 0) {
+        html += `<ul class="bubble-bullets">`;
+        data.key_points.forEach(point => {
+            html += `<li>${escapeHtml(point)}</li>`;
+        });
+        html += `</ul>`;
+    }
+
+    if (data.suggested_action) {
+        html += `<div class="bubble-action"><span>💡</span> <div>${escapeHtml(data.suggested_action)}</div></div>`;
+    }
+
+    if (data.follow_up_questions && data.follow_up_questions.length > 0) {
+        html += `
+            <div class="bubble-followups">
+                <span class="followup-label">Follow-up questions</span>
+                <div class="followup-chips">
+                    ${data.follow_up_questions.map(q => `<button class="followup-chip" type="button" data-question="${escapeHtml(q)}">${escapeHtml(q)}</button>`).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    // Fallback if data was plain string
+    if (!html && data.response) {
+        html = `<p>${escapeHtml(data.response)}</p>`;
+    }
+
+    body.innerHTML = html;
+
+    // Attach click listeners to new follow-up chips
+    body.querySelectorAll('.followup-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const q = btn.dataset.question;
+            if (q) sendChatMessage(q);
+        });
+    });
+
+    chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 function appendChatBubble(role, text) {
@@ -915,9 +1101,10 @@ function appendChatBubble(role, text) {
         `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>` :
         `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`;
 
+    const bodyContent = text ? `<p>${escapeHtml(text)}</p>` : '';
     div.innerHTML = `
         <div class="bubble-avatar">${iconSvg}</div>
-        <div class="bubble-body"><p>${escapeHtml(text)}</p></div>
+        <div class="bubble-body">${bodyContent}</div>
     `;
     chatMessages.appendChild(div);
     chatMessages.scrollTop = chatMessages.scrollHeight;

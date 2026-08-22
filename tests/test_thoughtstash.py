@@ -295,6 +295,17 @@ class TestPydanticSchemasAndAgents(unittest.TestCase):
         self.assertEqual(retrieved["summary"], "Design test for minimal UI")
         self.assertEqual(retrieved["location_name"], "San Francisco, CA")
 
+    def test_geocoding_utilities(self):
+        """Verify reverse geocoding and place searching."""
+        import geocode
+        known = geocode.search_place("Rancho San Antonio")
+        self.assertIsNotNone(known)
+        self.assertEqual(known["lat"], 37.3328)
+
+        rev = geocode.reverse_geocode(37.4419, -122.1430)
+        self.assertTrue(len(rev) > 0)
+        self.assertIn("Palo Alto", rev)
+
 
 if __name__ == "__main__":
     unittest.main()
