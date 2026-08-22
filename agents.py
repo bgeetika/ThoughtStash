@@ -20,15 +20,14 @@ from pydantic import BaseModel, Field
 
 import db
 
-load_dotenv()
+load_dotenv(override=True)
 
-DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
+DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
 FALLBACK_MODELS = [
-    DEFAULT_MODEL,
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
     "gemini-3.6-flash",
     "gemini-3.7-flash",
-    "gemini-3.5-flash",
-    "gemini-flash-latest",
 ]
 # Deduplicate while preserving order
 FALLBACK_MODELS = list(dict.fromkeys(FALLBACK_MODELS))
@@ -367,38 +366,31 @@ async def connector_analyze(new_thought: dict, past_thoughts: list[dict] | None 
 async def connector_full_analysis(thoughts: list[dict]) -> dict:
     """Full pattern analysis with hierarchical summarization and strict response_schema."""
     durable_themes = db.get_all_themes()
-    recent_rollups = db.get_recent_daily_rollups(14)
+    recent_rollups = db.get_recent_daily_rollups(10)
 
-    # Bound thoughts input to max 30 items to prevent context explosion
-    bounded_thoughts = thoughts[:30]
-    use_compact = len(bounded_thoughts) > 10
+    # Bound thoughts to latest 15 to ensure sub-2s response time
+    bounded_thoughts = thoughts[:15]
 
     thoughts_text = ""
     for i, t in enumerate(bounded_thoughts):
-        t_loc = t.get("location_name") or "Unknown location"
-        thoughts_text += f"\n--- Thought {i+1} ({t.get('created_at', '?')} @ {t_loc}) [{t.get('thought_type', 'thought')}] ---\n"
-        thoughts_text += f"Summary: {t.get('summary', 'N/A')}\n"
-        thoughts_text += f"Topics: {', '.join(t.get('topics', []))}\n"
-        thoughts_text += f"Mood: {t.get('mood', 'N/A')}\n"
-        if not use_compact:
-            thoughts_text += f"Key Insights: {', '.join(t.get('key_insights', []))}\n"
-            thoughts_text += f"Transcript: {t.get('transcript', 'N/A')}\n"
+        t_loc = t.get("location_name") or "Bay Area"
+        thoughts_text += f"- [{t.get('created_at', '')[:10]} @ {t_loc}] ({t.get('mood', 'reflective')}) {t.get('summary', '')}\n"
 
     rollup_text = ""
     if recent_rollups:
         rollup_text = "## RECENT DAILY ROLLUPS:\n"
-        for r in recent_rollups[:7]:
-            rollup_text += f"- **{r['date']}** ({r['thought_count']} thoughts, {r['mood_summary']}): {r['summary']}\n"
+        for r in recent_rollups[:5]:
+            rollup_text += f"- {r['date']} ({r['thought_count']} thoughts, {r['mood_summary']}): {r['summary']}\n"
 
-    prompt = f"""You are the Connector agent running a COMPREHENSIVE MULTI-WEEK SYNTHESIS.
-Analyze the user's historical thoughts, daily rollups, and durable themes:
+    prompt = f"""You are the Connector agent running high-speed multi-week thought synthesis.
+Analyze these episodic thoughts, rollups, and themes to detect patterns:
 
-Durable Themes in Memory:
-{json.dumps(durable_themes, indent=2) if durable_themes else "None"}
+Durable Themes:
+{json.dumps(durable_themes[:4], indent=2) if durable_themes else "None"}
 
 {rollup_text}
 
-Historical Thoughts Stream ({len(bounded_thoughts)} entries):
+Thought Stream:
 {thoughts_text}
 """
     config = types.GenerateContentConfig(

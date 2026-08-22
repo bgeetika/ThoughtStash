@@ -273,7 +273,7 @@ document.querySelectorAll('.nav-dock-btn').forEach(btn => {
             else setTimeout(() => leafletMap.invalidateSize(), 150);
         }
         if (targetId === 'graphTab') {
-            if (!forceGraph3DInstance) init3DGraph();
+            setTimeout(() => init3DGraph(), 60);
         }
     });
 });
@@ -605,58 +605,241 @@ async function loadMapPoints() {
     }
 }
 
-// ── 10. 3D Neural Knowledge Space (3D Force Graph WebGL) ────────────
+// ── 10. 3D Neural Knowledge Space (Native Three.js WebGL Galaxy) ───
 
-function init3DGraph() {
+let graph3DScene = null, graph3DCamera = null, graph3DRenderer = null, graph3DAnimationId = null;
+let graph3DGroup = null, graph3DNodeMeshes = [];
+let isGraphDragging = false, prevMousePos = { x: 0, y: 0 };
+
+async function init3DGraph() {
     const container = document.getElementById('neural3DGraph');
-    if (!container || typeof ForceGraph3D === 'undefined') return;
+    if (!container || typeof THREE === 'undefined') return;
 
-    forceGraph3DInstance = ForceGraph3D()(container)
-        .backgroundColor('rgba(0,0,0,0)')
-        .showNavInfo(false)
-        .nodeLabel(node => `<div style="font-family:Plus Jakarta Sans,sans-serif;padding:6px 10px;background:rgba(13,17,26,0.9);border:1px solid #00f2fe;border-radius:8px;color:#fff;font-size:12px"><strong>${escapeHtml(node.label)}</strong></div>`)
-        .nodeColor(node => node.color || '#00f2fe')
-        .nodeVal(node => node.size || 14)
-        .nodeResolution(16)
-        .linkColor(() => 'rgba(0, 242, 254, 0.25)')
-        .linkWidth(link => link.width || 1)
-        .linkDirectionalParticles(2)
-        .linkDirectionalParticleWidth(1.8)
-        .linkDirectionalParticleColor(() => '#00f2fe')
-        .onNodeClick(node => {
-            // Fly camera to node
-            const distance = 40;
-            const distRatio = 1 + distance / Math.hypot(node.x, node.y, node.z);
-            forceGraph3DInstance.cameraPosition(
-                { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio },
-                node,
-                1200
-            );
+    if (graph3DAnimationId) {
+        cancelAnimationFrame(graph3DAnimationId);
+    }
+    container.innerHTML = '';
 
-            if (node.full_data) {
-                openThoughtInspector(node.full_data);
-            }
-        });
+    const width = container.clientWidth || 980;
+    const height = 540;
 
-    load3DGraphData();
+    graph3DScene = new THREE.Scene();
+    graph3DCamera = new THREE.PerspectiveCamera(50, width / height, 1, 3000);
+    graph3DCamera.position.set(0, 0, 310);
 
-    document.getElementById('resetGraphBtn')?.addEventListener('click', () => {
-        if (forceGraph3DInstance) {
-            forceGraph3DInstance.cameraPosition({ x: 0, y: 0, z: 250 }, { x: 0, y: 0, z: 0 }, 1000);
-        }
-    });
-}
+    graph3DRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    graph3DRenderer.setSize(width, height);
+    graph3DRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(graph3DRenderer.domElement);
 
-async function load3DGraphData() {
-    if (!forceGraph3DInstance) return;
+    // Ambient & Neon Point Lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
+    graph3DScene.add(ambientLight);
+
+    const pLight1 = new THREE.PointLight(0x00f2fe, 3.5, 700);
+    pLight1.position.set(160, 160, 220);
+    graph3DScene.add(pLight1);
+
+    const pLight2 = new THREE.PointLight(0x8a2be2, 3.5, 700);
+    pLight2.position.set(-160, -160, 220);
+    graph3DScene.add(pLight2);
+
+    graph3DGroup = new THREE.Group();
+    graph3DScene.add(graph3DGroup);
+    graph3DNodeMeshes = [];
+
+    // Load graph data from API
     try {
         const res = await fetch('/api/graph');
         const data = await res.json();
-        graphRawData = data;
-        forceGraph3DInstance.graphData(data);
+        if (!data || !data.nodes || data.nodes.length === 0) return;
+
+        const nodeMap = new Map();
+
+        // 4 Key Pillar coordinates in 3D
+        const themePillars = {
+            'theme_tech': new THREE.Vector3(-85, 45, 25),
+            'theme_work': new THREE.Vector3(85, 50, -25),
+            'theme_family': new THREE.Vector3(-75, -55, -35),
+            'theme_health': new THREE.Vector3(75, -50, 35)
+        };
+
+        data.nodes.forEach(n => {
+            let pos;
+            const isTheme = n.group === 'theme';
+            if (isTheme && themePillars[n.id]) {
+                pos = themePillars[n.id].clone();
+            } else {
+                let basePos = new THREE.Vector3(0, 0, 0);
+                const col = (n.color || '').toLowerCase();
+                if (col.includes('8b5cf6') || col.includes('00f2fe')) basePos = themePillars['theme_tech'];
+                else if (col.includes('3b82f6') || col.includes('6366f1')) basePos = themePillars['theme_work'];
+                else if (col.includes('ec4899') || col.includes('ff007f')) basePos = themePillars['theme_family'];
+                else basePos = themePillars['theme_health'];
+
+                const u = Math.random();
+                const v = Math.random();
+                const theta = u * 2.0 * Math.PI;
+                const phi = Math.acos(2.0 * v - 1.0);
+                const r = isTheme ? 70 : (30 + Math.random() * 50);
+
+                const sinPhi = Math.sin(phi);
+                pos = new THREE.Vector3(
+                    basePos.x + r * sinPhi * Math.cos(theta),
+                    basePos.y + r * sinPhi * Math.sin(theta),
+                    basePos.z + r * Math.cos(phi)
+                );
+            }
+
+            const size = isTheme ? 10 : 4.5;
+            let colHex = 0x00f2fe;
+            if (n.color) {
+                colHex = parseInt(n.color.replace('#', '0x'), 16);
+            }
+
+            const sphereGeo = new THREE.SphereGeometry(size, 20, 20);
+            const sphereMat = new THREE.MeshStandardMaterial({
+                color: colHex,
+                emissive: colHex,
+                emissiveIntensity: isTheme ? 0.7 : 0.45,
+                roughness: 0.25,
+                metalness: 0.75
+            });
+            const mesh = new THREE.Mesh(sphereGeo, sphereMat);
+            mesh.position.copy(pos);
+            mesh.userData = n;
+
+            // Halo ring for themes
+            if (isTheme) {
+                const ringGeo = new THREE.RingGeometry(size * 1.3, size * 1.6, 32);
+                const ringMat = new THREE.MeshBasicMaterial({
+                    color: colHex,
+                    transparent: true,
+                    opacity: 0.55,
+                    side: THREE.DoubleSide
+                });
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.rotation.x = Math.PI / 2;
+                mesh.add(ring);
+            }
+
+            // Crisp 2D Sprite Text Label
+            const labelCanvas = document.createElement('canvas');
+            const lCtx = labelCanvas.getContext('2d');
+            labelCanvas.width = 256;
+            labelCanvas.height = 64;
+            lCtx.fillStyle = isTheme ? '#ffffff' : '#cbd5e1';
+            lCtx.font = isTheme ? 'bold 20px Plus Jakarta Sans, sans-serif' : '16px Plus Jakarta Sans, sans-serif';
+            lCtx.fillText(n.label.slice(0, 22), 8, 38);
+
+            const spriteTex = new THREE.CanvasTexture(labelCanvas);
+            const spriteMat = new THREE.SpriteMaterial({ map: spriteTex, transparent: true });
+            const sprite = new THREE.Sprite(spriteMat);
+            sprite.position.set(0, size + 8, 0);
+            sprite.scale.set(36, 9, 1);
+            mesh.add(sprite);
+
+            graph3DGroup.add(mesh);
+            nodeMap.set(n.id, mesh);
+            graph3DNodeMeshes.push(mesh);
+        });
+
+        // Lines connecting related nodes
+        const lineCoords = [];
+        const rawLinks = data.links || data.edges || [];
+        rawLinks.forEach(l => {
+            const srcId = l.source || l.from;
+            const tgtId = l.target || l.to;
+            const m1 = nodeMap.get(srcId);
+            const m2 = nodeMap.get(tgtId);
+            if (m1 && m2) {
+                lineCoords.push(m1.position.x, m1.position.y, m1.position.z);
+                lineCoords.push(m2.position.x, m2.position.y, m2.position.z);
+            }
+        });
+
+        if (lineCoords.length > 0) {
+            const lineGeo = new THREE.BufferGeometry();
+            lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(lineCoords, 3));
+            const lineMat = new THREE.LineBasicMaterial({
+                color: 0x00f2fe,
+                transparent: true,
+                opacity: 0.3
+            });
+            const lines = new THREE.LineSegments(lineGeo, lineMat);
+            graph3DGroup.add(lines);
+        }
+
     } catch (err) {
-        console.error("Graph load error:", err);
+        console.error("3D Graph load error:", err);
     }
+
+    // Mouse Interaction
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    container.onmousedown = (e) => {
+        isGraphDragging = true;
+        prevMousePos = { x: e.clientX, y: e.clientY };
+    };
+
+    window.onmouseup = () => {
+        isGraphDragging = false;
+    };
+
+    container.onmousemove = (e) => {
+        const rect = container.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+        if (isGraphDragging && graph3DGroup) {
+            const dx = e.clientX - prevMousePos.x;
+            const dy = e.clientY - prevMousePos.y;
+            graph3DGroup.rotation.y += dx * 0.005;
+            graph3DGroup.rotation.x += dy * 0.005;
+            prevMousePos = { x: e.clientX, y: e.clientY };
+        }
+    };
+
+    container.onwheel = (e) => {
+        e.preventDefault();
+        graph3DCamera.position.z = Math.max(90, Math.min(550, graph3DCamera.position.z + e.deltaY * 0.35));
+    };
+
+    container.onclick = (e) => {
+        const rect = container.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, graph3DCamera);
+        const hits = raycaster.intersectObjects(graph3DNodeMeshes);
+        if (hits.length > 0) {
+            const hit = hits[0].object;
+            if (hit.userData && hit.userData.full_data) {
+                openThoughtInspector(hit.userData.full_data);
+            }
+        }
+    };
+
+    document.getElementById('resetGraphBtn')?.addEventListener('click', () => {
+        if (graph3DGroup && graph3DCamera) {
+            graph3DGroup.rotation.set(0, 0, 0);
+            graph3DCamera.position.set(0, 0, 310);
+        }
+    });
+
+    function animateGraph() {
+        graph3DAnimationId = requestAnimationFrame(animateGraph);
+        if (!isGraphDragging && graph3DGroup) {
+            graph3DGroup.rotation.y += 0.0012; // Slow galactic rotation
+        }
+        graph3DRenderer.render(graph3DScene, graph3DCamera);
+    }
+    animateGraph();
+}
+
+function load3DGraphData() {
+    init3DGraph();
 }
 
 // ── 11. Timeline View ──────────────────────────────────────────────

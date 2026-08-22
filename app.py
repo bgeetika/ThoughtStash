@@ -21,7 +21,7 @@ from pydantic import BaseModel
 import agents
 import db
 
-load_dotenv()
+load_dotenv(override=True)
 
 app = FastAPI(title="ThoughtStash — Long-Horizon Voice Thought Agent")
 
@@ -433,12 +433,23 @@ async def get_neural_graph():
                     "from": f"thought_{t1['id']}",
                     "to": f"thought_{t2['id']}",
                     "label": f"{(sim*100):.0f}%",
-                    "color": {"color": "rgba(124,92,252,0.6)", "highlight": "#a78bfa"},
+                    "color": "rgba(124,92,252,0.6)",
                     "width": max(1, int(sim * 3)),
                     "font": {"size": 9, "color": "#94a3b8", "align": "middle"}
                 })
 
-    return {"nodes": nodes, "edges": edges}
+    # Standardize links format for 3D force graph (source/target)
+    links = []
+    for e in edges:
+        links.append({
+            "source": e["from"],
+            "target": e["to"],
+            "label": e.get("label", ""),
+            "color": e.get("color", {}).get("color", "rgba(0, 242, 254, 0.4)") if isinstance(e.get("color"), dict) else e.get("color", "rgba(0, 242, 254, 0.4)"),
+            "width": e.get("width", 1)
+        })
+
+    return {"nodes": nodes, "edges": edges, "links": links}
 
 
 # ── Semantic Search ─────────────────────────────────────────────────
