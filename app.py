@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -801,3 +801,65 @@ async def agent_status():
         "durable_themes_count": len(themes),
         "connector_has_insights": bool(latest_connector_insights),
     }
+
+
+@app.get("/api/export/knowledge")
+async def export_knowledge_base():
+    """Export full 1-year memory archive as a structured markdown knowledge document for Gemini Gems / LLMs."""
+    thoughts = db.get_all_thoughts(status="completed")
+    themes = db.get_all_themes()
+
+    theme_pillars = [
+        ("AI & Systems", "Agent memory systems, local vector indices, 8-bit quantization, context compression, hierarchical ledger logging"),
+        ("Strategy & Work", "Engineering squad sizing (<=4), No-Meeting Thursdays, sprint focus, 1-on-1 career frameworks, reducing coordination friction"),
+        ("Family & Events", "Ananya's birthday party (mermaid/piñata, <12 kids), Parents' 40th anniversary (Carmel/Half Moon Bay, Los Altos pendant, road trip slideshow), Manya's party learnings"),
+        ("Health & Nature", "Morning trail running, strict 1 PM caffeine cutoff, 3L daily hydration, sleep latency tracking, posture during calls"),
+        ("Travel & Exploration", "Lake Tahoe (Emerald Bay, Rubicon Trail), Big Sur coastline, Sausalito marina walk, Marin Headlands, Capitola Venetian Beach"),
+        ("Philosophy & Ideas", "Analog thinking over digital clutter, cognitive load reduction, presence over compulsive capture, sovereign user context"),
+        ("Habits & Routines", "Pacing during phone syncs, 10k daily step baseline, screenless Sunday mornings, minimalist desk setup")
+    ]
+
+    lines = [
+        "# ThoughtStash Personal Memory & Knowledge Base",
+        f"This document contains the user's authentic archive of {len(thoughts)} personal voice notes, walk reflections, ideas, and decisions spanning August 2025 to August 2026.",
+        "\n## 7 CORE THEME PILLARS\n"
+    ]
+    for name, desc in theme_pillars:
+        lines.append(f"- **{name}**: {desc}")
+
+    if themes:
+        lines.append("\n## DURABLE MULTI-WEEK THEMES (Discovered by Connector Agent)\n")
+        for th in themes:
+            lines.append(f"- **{th.get('name')}** ({th.get('frequency', 0)} notes): {th.get('description', '')}")
+
+    lines.append("\n## COMPLETE 1-YEAR MEMORY ARCHIVE\n")
+    for t in thoughts:
+        tid = t.get("id")
+        dt = (t.get("created_at") or "")[:10]
+        loc = t.get("location_name") or "Bay Area"
+        summary = t.get("summary") or "Note"
+        topics = ", ".join(t.get("topics") or [])
+        insights = t.get("key_insights") or []
+        mood = t.get("mood") or "thoughtful"
+        ttype = t.get("thought_type") or "reflection"
+        transcript = t.get("transcript") or ""
+
+        lines.append(f"### Memory #{tid}: {summary}")
+        lines.append(f"- **Date**: {dt} | **Location**: {loc} | **Type**: {ttype} | **Mood**: {mood}")
+        lines.append(f"- **Topics**: {topics}")
+        if insights:
+            lines.append("- **Key Insights**:")
+            for ins in insights:
+                lines.append(f"  * {ins}")
+        if transcript:
+            lines.append(f"- **Full Voice Transcript**: \"{transcript}\"")
+        lines.append("")
+
+    content = "\n".join(lines)
+    return Response(
+        content=content,
+        media_type="text/markdown",
+        headers={"Content-Disposition": 'attachment; filename="thoughtstash_knowledge_export.md"'}
+    )
+
+
